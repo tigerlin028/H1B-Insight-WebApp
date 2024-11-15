@@ -18,15 +18,28 @@ const connection = new Pool({
 const industryApproval = async function(req, res) {
   const query = `
     WITH h1b_clean AS (
-      SELECT * FROM h1b WHERE matched_company_id IS NOT NULL
+      SELECT * FROM h1b 
+      WHERE matched_company_id IS NOT NULL
+      AND status IS NOT NULL  -- Ensure status is not null
     )
     SELECT 
       ci.industry,
-      ROUND((SUM(CASE WHEN h.status = 1 THEN 1 ELSE 0 END) * 100.0) / COUNT(*), 2) as approval_rate
+      COUNT(*) as total_applications,
+      SUM(CASE WHEN h.status = 1 THEN 1 ELSE 0 END) as approved_applications,
+      ROUND(
+        CASE 
+          WHEN COUNT(*) > 0 THEN 
+            (SUM(CASE WHEN h.status = 1 THEN 1 ELSE 0 END)::DECIMAL * 100.0) / COUNT(*)
+          ELSE 0 
+        END, 
+        2
+      ) as approval_rate
     FROM h1b_clean h
     JOIN companies c ON h.matched_company_id = c.company_id
     JOIN company_industries ci ON c.company_id = ci.company_id
+    WHERE ci.industry IS NOT NULL  -- Ensure industry is not null
     GROUP BY ci.industry
+    HAVING COUNT(*) >= 5  -- Only include industries with at least 5 applications
     ORDER BY approval_rate DESC`;
 
   try {

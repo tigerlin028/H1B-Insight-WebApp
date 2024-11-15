@@ -6,14 +6,35 @@ const NavBar = () => {
   return (
     <AppBar position="static">
       <Toolbar>
-        <Typography variant="h6" component={Link} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'white' }}>
-          H1B Analysis
+        <Typography 
+          variant="h5" 
+          component={Link} 
+          to="/" 
+          sx={{ 
+            flexGrow: 1, 
+            textDecoration: 'none', 
+            color: 'white',
+            fontWeight: 'bold'
+          }}
+        >
+          Face the Reality
         </Typography>
-        <Box>
-          <Button color="inherit" component={Link} to="/industry">Industry</Button>
-          <Button color="inherit" component={Link} to="/companies">Companies</Button>
-          <Button color="inherit" component={Link} to="/h1b">H1B Stats</Button>
-          <Button color="inherit" component={Link} to="/jobs">Jobs</Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button color="inherit" component={Link} to="/">
+            Home
+          </Button>
+          <Button color="inherit" component={Link} to="/industry">
+            Industry
+          </Button>
+          <Button color="inherit" component={Link} to="/companies">
+            Companies
+          </Button>
+          <Button color="inherit" component={Link} to="/h1b">
+            H1B Stats
+          </Button>
+          <Button color="inherit" component={Link} to="/jobs">
+            Jobs
+          </Button>
         </Box>
       </Toolbar>
     </AppBar>
