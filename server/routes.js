@@ -162,7 +162,7 @@ const remoteWorkStats = async function(req, res) {
       ROUND(AVG((s.min_salary + s.max_salary)/2)) as avg_salary,
       COUNT(DISTINCT p.company_id) as unique_companies
     FROM h1b h
-    JOIN postings p ON h.employer_name = p.company_name
+    JOIN postings p ON h.matched_company_id = p.company_id
     JOIN salary s ON p.job_id = s.job_id
     WHERE s.pay_period = 'YEARLY'
     GROUP BY
@@ -177,7 +177,7 @@ const remoteWorkStats = async function(req, res) {
     res.json(data.rows);
   } catch (err) {
     console.log(err);
-    res.json([]);
+    res.json('error');
   }
 }
 
@@ -252,7 +252,7 @@ const companyTierStats = async function(req, res) {
     FROM company_tiers ct
     LEFT JOIN postings p ON ct.company_id = p.company_id
     LEFT JOIN salary s ON p.job_id = s.job_id
-    LEFT JOIN h1b h ON p.company_name = h.employer_name
+    LEFT JOIN h1b h ON p.company_id = h.matched_company_id
     WHERE s.pay_period = 'YEARLY'
     GROUP BY ct.industry, ct.company_size
     HAVING COUNT(DISTINCT ct.company_id) >= 5

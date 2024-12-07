@@ -1,211 +1,71 @@
-import React from 'react';
-import { Container, Typography, Grid, Paper, Box } from '@mui/material';
-import {
-  Chart as ChartJS,
-  ArcElement,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Pie, Bar } from 'react-chartjs-2';
+import React, { useState, useEffect } from 'react';
+import { Container, Typography, Paper } from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
 
-ChartJS.register(
-  ArcElement,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+const CompanyDashboardPage = () => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-const CompanyAnalysisPage = () => {
-  const [sizeStats, setSizeStats] = React.useState([]);
-  const [tierStats, setTierStats] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    Promise.all([
-      fetch('http://localhost:8080/company/size-stats'),
-      fetch('http://localhost:8080/company/tier-stats')
-    ])
-      .then(([sizeRes, tierRes]) => 
-        Promise.all([sizeRes.json(), tierRes.json()])
-      )
-      .then(([sizeData, tierData]) => {
-        setSizeStats(sizeData);
-        setTierStats(tierData);
+  useEffect(() => {
+    // Fetching data from /company/tier-stats endpoint as an example
+    // Once you have a dedicated endpoint returning historical job titles,
+    // descriptions, and visa info, update this fetch call accordingly.
+    fetch('http://localhost:8080/company/tier-stats')
+      .then(response => response.json())
+      .then(result => {
+        setData(result);
         setLoading(false);
       })
-      .catch(err => {
-        console.error(err);
+      .catch(error => {
+        console.error('Error fetching company data:', error);
         setLoading(false);
       });
   }, []);
 
-  const sizeChartData = {
-    labels: sizeStats.map(item => item.size_category),
-    datasets: [{
-      data: sizeStats.map(item => item.company_count),
-      backgroundColor: [
-        '#990000',
-        '#011F5B',
-        '#666666',
-        '#999999'
-      ],
-      borderColor: '#FFFFFF',
-      borderWidth: 1
-    }]
-  };
+  // Define columns based on the data returned by /company/tier-stats
+  // Adjust these to reflect actual fields once you have the H1B historical endpoint
+  const columns = [
+    { field: 'industry', headerName: 'Industry', flex: 1 },
+    { field: 'company_size', headerName: 'Company Size', flex: 1 },
+    { field: 'company_count', headerName: 'Company Count', flex: 1 },
+    { field: 'avg_followers', headerName: 'Avg Followers', flex: 1 },
+    { field: 'avg_employees', headerName: 'Avg Employees', flex: 1 },
+    { field: 'total_jobs', headerName: 'Total Jobs', flex: 1 },
+    { field: 'avg_max_salary', headerName: 'Avg Max Salary', flex: 1 },
+    { field: 'h1b_approval_rate', headerName: 'H1B Approval Rate (%)', flex: 1 },
+  ];
 
-  const tierChartData = {
-    labels: tierStats.map(item => item.company_size),
-    datasets: [
-      {
-        label: 'Average Max Salary',
-        data: tierStats.map(item => item.avg_max_salary),
-        backgroundColor: '#990000',
-      },
-      {
-        label: 'H1B Approval Rate (%)',
-        data: tierStats.map(item => item.h1b_approval_rate),
-        backgroundColor: '#011F5B',
-      }
-    ]
-  };
-
-  const pieOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'right',
-      },
-      title: {
-        display: true,
-        text: 'Company Size Distribution'
-      }
-    }
-  };
-
-  const barOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top',
-      },
-      title: {
-        display: true,
-        text: 'Company Performance by Size'
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        position: 'left',
-        title: {
-          display: true,
-          text: 'Value'
-        }
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Company Size'
-        }
-      }
-    }
-  };
+  // Convert data from API into DataGrid-compatible rows
+  // Assign a unique 'id' for each row
+  const rows = data.map((item, index) => ({ id: index, ...item }));
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Typography variant="h4" sx={{ mb: 4 }}>
-        Company Analysis
+        Company Dashboard
       </Typography>
-      
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Company Size Distribution
-            </Typography>
-            <Box sx={{ height: 400, position: 'relative' }}>
-              {loading ? (
-                <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
-                  Loading data...
-                </Typography>
-              ) : (
-                <Pie data={sizeChartData} options={pieOptions} />
-              )}
-            </Box>
-          </Paper>
-        </Grid>
+      <Typography variant="body1" sx={{ mb: 2 }}>
+        Explore company-specific H1B metrics, including industry details, company sizes,
+        salary averages, and approval rates.
+      </Typography>
 
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Company Performance Metrics
-            </Typography>
-            <Box sx={{ height: 400, position: 'relative' }}>
-              {loading ? (
-                <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
-                  Loading data...
-                </Typography>
-              ) : (
-                <Bar data={tierChartData} options={barOptions} />
-              )}
-            </Box>
-          </Paper>
-        </Grid>
-
-        {/* Summary Statistics */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h6" gutterBottom>
-              Total Companies
-            </Typography>
-            <Typography variant="h4">
-              {sizeStats.reduce((acc, curr) => acc + curr.company_count, 0).toLocaleString()}
-            </Typography>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h6" gutterBottom>
-              Average H1B Approval Rate
-            </Typography>
-            <Typography variant="h4">
-              {tierStats.length > 0 
-                ? `${(tierStats.reduce((acc, curr) => acc + curr.h1b_approval_rate, 0) / tierStats.length).toFixed(1)}%`
-                : 'N/A'
-              }
-            </Typography>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h6" gutterBottom>
-              Average Company Size
-            </Typography>
-            <Typography variant="h4">
-              {sizeStats.length > 0 
-                ? Math.round(sizeStats.reduce((acc, curr) => 
-                    acc + (curr.company_count * parseInt(curr.size_category)), 0) / 
-                    sizeStats.reduce((acc, curr) => acc + curr.company_count, 0)).toLocaleString()
-                : 'N/A'
-              }
-            </Typography>
-          </Paper>
-        </Grid>
-      </Grid>
+      <Paper sx={{ height: 600, p: 3 }}>
+        {loading ? (
+          <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
+            Loading data...
+          </Typography>
+        ) : (
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            pageSize={10}
+            rowsPerPageOptions={[10, 25, 50]}
+            disableSelectionOnClick
+          />
+        )}
+      </Paper>
     </Container>
   );
 };
 
-export default CompanyAnalysisPage;
+export default CompanyDashboardPage;

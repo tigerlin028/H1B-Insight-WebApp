@@ -19,7 +19,6 @@ app.get('/company/tier-stats', routes.companyTierStats);
 app.get('/h1b/gender-stats', routes.genderStats);
 app.get('/company/state-stats', routes.stateStats);
 app.get('/industry/size-stats', routes.industrySizeStats);
-
 app.listen(config.server_port, () => {
   console.log(`Server running at http://${config.server_host}:${config.server_port}/`)
 });

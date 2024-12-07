@@ -1,5 +1,6 @@
 import React from 'react';
 import { Container, Typography, Grid, Paper, Box } from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,19 +28,22 @@ ChartJS.register(
 const IndustryAnalysisPage = () => {
   const [salaryData, setSalaryData] = React.useState([]);
   const [sizeData, setSizeData] = React.useState([]);
+  const [tierStatsData, setTierStatsData] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     Promise.all([
       fetch('http://localhost:8080/industry/salary'),
-      fetch('http://localhost:8080/industry/size-stats')
+      fetch('http://localhost:8080/industry/size-stats'),
+      fetch('http://localhost:8080/company/tier-stats')
     ])
-      .then(([salaryRes, sizeRes]) => 
-        Promise.all([salaryRes.json(), sizeRes.json()])
+      .then(([salaryRes, sizeRes, tierStatsRes]) =>
+        Promise.all([salaryRes.json(), sizeRes.json(), tierStatsRes.json()])
       )
-      .then(([salaryData, sizeData]) => {
+      .then(([salaryData, sizeData, tierStatsData]) => {
         setSalaryData(salaryData);
         setSizeData(sizeData);
+        setTierStatsData(tierStatsData);
         setLoading(false);
       })
       .catch(err => {
@@ -48,27 +52,36 @@ const IndustryAnalysisPage = () => {
       });
   }, []);
 
+  // Sort and slice top 10 industries for salary and size
+  const topSalaryData = salaryData
+    .sort((a, b) => b.avg_max_salary - a.avg_max_salary) // Sort by max salary descending
+    .slice(0, 10); // Get top 10
+
+  const topSizeData = sizeData
+    .sort((a, b) => b.avg_employees - a.avg_employees) // Sort by average employees descending
+    .slice(0, 10); // Get top 10
+
   const salaryChartData = {
-    labels: salaryData.map(item => item.industry),
+    labels: topSalaryData.map(item => item.industry),
     datasets: [
       {
         label: 'Min Salary',
-        data: salaryData.map(item => item.avg_min_salary),
+        data: topSalaryData.map(item => item.avg_min_salary),
         backgroundColor: '#990000',
       },
       {
         label: 'Max Salary',
-        data: salaryData.map(item => item.avg_max_salary),
+        data: topSalaryData.map(item => item.avg_max_salary),
         backgroundColor: '#011F5B',
       }
     ]
   };
 
   const sizeChartData = {
-    labels: sizeData.map(item => item.industry),
+    labels: topSizeData.map(item => item.industry),
     datasets: [{
       label: 'Average Employees',
-      data: sizeData.map(item => item.avg_employees),
+      data: topSizeData.map(item => item.avg_employees),
       borderColor: '#990000',
       backgroundColor: '#990000',
       tension: 0.1,
@@ -85,7 +98,7 @@ const IndustryAnalysisPage = () => {
       },
       title: {
         display: true,
-        text: 'Industry Salary Distribution'
+        text: 'Top 10 Industries by Salary'
       }
     },
     scales: {
@@ -114,7 +127,7 @@ const IndustryAnalysisPage = () => {
       },
       title: {
         display: true,
-        text: 'Industry Size Distribution'
+        text: 'Top 10 Industries by Company Size'
       }
     },
     scales: {
@@ -134,17 +147,63 @@ const IndustryAnalysisPage = () => {
     }
   };
 
+  // Define columns for the DataGrid
+  const columns = [
+    { field: 'industry', headerName: 'Industry', flex: 1 },
+    { field: 'company_size', headerName: 'Company Size', flex: 1 },
+    {
+      field: 'company_count',
+      headerName: 'Company Count',
+      flex: 1,
+      type: 'number'
+    },
+    {
+      field: 'avg_followers',
+      headerName: 'Avg Followers',
+      flex: 1,
+      type: 'number'
+    },
+    {
+      field: 'avg_employees',
+      headerName: 'Avg Employees',
+      flex: 1,
+      type: 'number'
+    },
+    {
+      field: 'total_jobs',
+      headerName: 'Total Jobs',
+      flex: 1,
+      type: 'number'
+    },
+    {
+      field: 'avg_max_salary',
+      headerName: 'Avg Max Salary',
+      flex: 1,
+      valueFormatter: (params) => params.value ? `$${params.value.toLocaleString()}` : 'N/A'
+    },
+    {
+      field: 'h1b_approval_rate',
+      headerName: 'H1B Approval Rate (%)',
+      flex: 1,
+      valueFormatter: (params) => `${params.value}%`
+    },
+  ];
+
+  // Convert tier stats data into DataGrid-compatible rows
+  const rows = tierStatsData.map((item, index) => ({ id: index, ...item }));
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Typography variant="h4" sx={{ mb: 4 }}>
         Industry Analysis
       </Typography>
-      
+
       <Grid container spacing={3}>
+        {/* Salary Chart */}
         <Grid item xs={12}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Industry Salary Distribution
+              Top 10 Industries by Salary
             </Typography>
             <Box sx={{ height: 400, position: 'relative' }}>
               {loading ? (
@@ -158,10 +217,11 @@ const IndustryAnalysisPage = () => {
           </Paper>
         </Grid>
 
+        {/* Size Chart */}
         <Grid item xs={12}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Industry Size Distribution
+              Top 10 Industries by Company Size
             </Typography>
             <Box sx={{ height: 400, position: 'relative' }}>
               {loading ? (
@@ -175,6 +235,32 @@ const IndustryAnalysisPage = () => {
           </Paper>
         </Grid>
 
+        {/* Industry Details Table */}
+        <Grid item xs={12} sx={{ mb: 6 }}>
+          <Paper sx={{ p: 3, height: 600 }}>
+            <Typography variant="h6" gutterBottom>
+              Detailed Industry Information
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+                Explore industries-specific H1B metrics, including industry details, company sizes,
+                salary averages, and approval rates.
+            </Typography>
+            {loading ? (
+              <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
+                Loading data...
+              </Typography>
+            ) : (
+              <DataGrid
+                rows={rows}
+                columns={columns}
+                pageSize={10}
+                rowsPerPageOptions={[10, 25, 50]}
+                disableSelectionOnClick
+              />
+            )}
+          </Paper>
+        </Grid>
+
         {/* Summary Statistics */}
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3, textAlign: 'center' }}>
@@ -182,8 +268,8 @@ const IndustryAnalysisPage = () => {
               Average Industry Salary
             </Typography>
             <Typography variant="h4">
-              {salaryData.length > 0 
-                ? `$${Math.round(salaryData.reduce((acc, curr) => 
+              {salaryData.length > 0
+                ? `$${Math.round(salaryData.reduce((acc, curr) =>
                     acc + (curr.avg_min_salary + curr.avg_max_salary) / 2, 0) / salaryData.length).toLocaleString()}`
                 : 'N/A'
               }
@@ -197,9 +283,9 @@ const IndustryAnalysisPage = () => {
               Average Company Size
             </Typography>
             <Typography variant="h4">
-              {sizeData.length > 0 
-                ? Math.round(sizeData.reduce((acc, curr) => 
-                    acc + curr.avg_employees, 0) / sizeData.length).toLocaleString()
+              {sizeData.length > 0
+                ? Math.round(sizeData.reduce((acc, curr) =>
+                    acc + Number(curr.avg_employees), 0) / sizeData.length).toLocaleString()
                 : 'N/A'
               }
             </Typography>

@@ -1,252 +1,145 @@
 import React from 'react';
-import { Container, Typography, Grid, Paper, Box } from '@mui/material';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
+import { Container, Typography, Box, Grid, Paper, List, ListItem, ListItemText } from '@mui/material';
 
 const HomePage = () => {
-  const [topIndustries, setTopIndustries] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    fetch('http://localhost:8080/h1b/industry-approval')
-      .then(res => res.json())
-      .then(data => {
-        console.log('Raw API response:', data); // Debug log
-        setTopIndustries(data.slice(0, 10));
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('API Error:', err);
-        setLoading(false);
-      });
-  }, []);
-
-  // Format industry names to be more concise
-  const formatIndustryName = (name) => {
-    if (!name) return 'N/A';
-    return name
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ')
-      .replace('Manufacturing', 'Mfg.')
-      .replace('Services', 'Svc.')
-      .replace('Resources', 'Res.');
-  };
-
-  // Calculate average approval rate safely
-  const calculateAverageApproval = (industries) => {
-    if (!industries || industries.length === 0) return 0;
-    
-    const validIndustries = industries.filter(
-      industry => industry.approval_rate != null && !isNaN(industry.approval_rate)
-    );
-    
-    if (validIndustries.length === 0) return 0;
-    
-    console.log('Valid industries for average:', validIndustries); // Debug log
-    const sum = validIndustries.reduce((acc, curr) => acc + Number(curr.approval_rate), 0);
-    const average = (sum / validIndustries.length).toFixed(1);
-    console.log('Calculated average:', average); // Debug log
-    return average;
-  };
-
-  const chartData = {
-    labels: topIndustries.map(item => formatIndustryName(item.industry)),
-    datasets: [{
-      label: 'Approval Rate',
-      data: topIndustries.map(item => Number(item.approval_rate).toFixed(1)),
-      backgroundColor: [
-        '#990000',
-        '#a61717',
-        '#b32e2e',
-        '#c04545',
-        '#cc5c5c',
-        '#d97373',
-        '#e58a8a',
-        '#f2a1a1',
-        '#ffb8b8',
-        '#ffcfcf',
-      ],
-      borderWidth: 1,
-      borderRadius: 5,
-      barThickness: 30,
-    }]
-  };
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false,
-      },
-      tooltip: {
-        callbacks: {
-          label: (context) => `Approval Rate: ${Number(context.raw).toFixed(1)}%`,
-          title: (tooltipItems) => formatIndustryName(topIndustries[tooltipItems[0].dataIndex].industry)
-        },
-        padding: 12,
-        titleFont: {
-          size: 14,
-          weight: 'bold',
-        },
-        bodyFont: {
-          size: 13,
-        },
-      },
-      title: {
-        display: true,
-        text: 'Top Industries by H1B Approval Rate',
-        font: {
-          size: 18,
-          weight: 'bold',
-        },
-        padding: {
-          top: 10,
-          bottom: 20
-        },
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        max: 100,
-        ticks: {
-          callback: (value) => `${value}%`,
-          font: {
-            size: 12,
-          },
-          stepSize: 20,
-        },
-        grid: {
-          display: true,
-          drawBorder: false,
-          color: 'rgba(0, 0, 0, 0.1)',
-        },
-        title: {
-          display: true,
-          text: 'Approval Rate (%)',
-          font: {
-            size: 14,
-            weight: 'bold',
-          },
-          padding: { top: 10, bottom: 10 },
-        },
-      },
-      x: {
-        grid: {
-          display: false,
-        },
-        ticks: {
-          font: {
-            size: 11,
-          },
-          maxRotation: 45,
-          minRotation: 45,
-        },
-        title: {
-          display: true,
-          text: 'Industry',
-          font: {
-            size: 14,
-            weight: 'bold',
-          },
-          padding: { top: 20, bottom: 0 },
-        },
-      },
-    },
-    layout: {
-      padding: {
-        left: 10,
-        right: 10,
-        top: 0,
-        bottom: 10
-      }
-    },
-  };
-
-  const getTotalApplications = (industries) => {
-    if (!industries || industries.length === 0) return 0;
-    return industries.reduce((acc, curr) => acc + Number(curr.total_applications || 0), 0);
-  };
-
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Paper 
-            sx={{ 
-              p: 3,
-              '& canvas': {
-                maxHeight: '450px !important'
-              }
-            }}
-          >
-            <Box sx={{ height: 500, position: 'relative' }}>
-              {loading ? (
-                <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
-                  Loading data...
-                </Typography>
-              ) : (
-                <Bar data={chartData} options={options} />
-              )}
-            </Box>
-          </Paper>
-        </Grid>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h3" gutterBottom>
+          About
+        </Typography>
+        <Typography variant="h5" gutterBottom sx={{ fontStyle: 'italic', fontWeight: 'bold' }}>
+          "We Grade Companies to help H1B Holders make Informed Decisions!"
+        </Typography>
+        <Typography variant="subtitle1" gutterBottom sx={{ fontStyle: 'italic' }}>
+          "In God we trust; all others must bring data."
+          <br />
+          — William Edwards Deming, American statistician, professor, author, lecturer, and consultant.
+        </Typography>
+      </Box>
 
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: 'center', height: '100%' }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-              Total Industries
-            </Typography>
-            <Typography variant="h4" sx={{ color: 'primary.main' }}>
-              {topIndustries.length}
-            </Typography>
-          </Paper>
-        </Grid>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+          CIS550 Group 39
+        </Typography>
+        <Typography variant="body1" paragraph>
+          Team Members: Caitlyn Cui, Jiahua Liao, Joyce Chen, Xiaotian Lin
+        </Typography>
+      </Box>
 
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: 'center', height: '100%' }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-              Average Approval Rate
-            </Typography>
-            <Typography variant="h4" sx={{ color: 'primary.main' }}>
-              {`${calculateAverageApproval(topIndustries)}%`}
-            </Typography>
-          </Paper>
-        </Grid>
+      <Box sx={{ mb: 4 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+          Introduction
+        </Typography>
+        <Typography variant="body1" paragraph>
+          Every year about 85,000 H1B Visas are given to internationals to work in America. Many of those internationals,
+          who aspire to work in US, look for H1B Sponsors. Some of them are already in the US and trying to look for new jobs,
+          change jobs, apply for Green Cards, etc. in companies that can sponsor H1B Visa for them.
+        </Typography>
 
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: 'center', height: '100%' }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-              Top Industry
-            </Typography>
-            <Typography variant="h4" sx={{ color: 'primary.main' }}>
-              {topIndustries.length > 0 
-                ? formatIndustryName(topIndustries[0].industry)
-                : 'N/A'
-              }
-            </Typography>
-          </Paper>
+        <Typography variant="body1" paragraph>
+          Most of the decisions taken today, by individuals to join a company or change to a new company, are based on the
+          'branding' of the company and references. But, we believe that such decisions should be based on "Data". Our goal
+          is to provide everyone a tool that grades companies based on various kinds of H1B related Data from various US
+          government agencies like USCIS, US Department of Labor.
+        </Typography>
+
+        <Typography variant="body1" paragraph>
+          Our goal is to provide everyone with H1B and other data in an interpretable way to make an informed decision as an
+          H1B Visa Holder in US. We provide grades for companies based on their past Immigration, Wage, and Other Data.
+          Our effort with this website is to provide you with:
+        </Typography>
+
+        <List sx={{ listStyleType: 'disc', pl: 4 }}>
+          <ListItem sx={{ display: 'list-item' }}>
+            <ListItemText primary="Complete Statistics of a Company from filing H1B LCAs to H1B Approvals" />
+          </ListItem>
+          <ListItem sx={{ display: 'list-item' }}>
+            <ListItemText primary="Complete Wage Statistics of a Company for various Roles, cities" />
+          </ListItem>
+          <ListItem sx={{ display: 'list-item' }}>
+            <ListItemText primary="Company Grade focused on factors relevant for H1B Holders in US" />
+          </ListItem>
+          <ListItem sx={{ display: 'list-item' }}>
+            <ListItemText primary="Options to Search for H1B Sponsors by Job Title, By Name" />
+          </ListItem>
+          <ListItem sx={{ display: 'list-item' }}>
+            <ListItemText primary="Multiple Reports on H1B like Highest Paid Companies, Highest Paid Cities, Highest Paid Jobs, etc." />
+          </ListItem>
+        </List>
+
+        <Typography variant="body1" paragraph>
+          Many more capabilities for you to make informed decision as an international professional to work in the US!
+          Happy Searching!
+        </Typography>
+      </Box>
+
+
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+          Project Description
+        </Typography>
+        <Typography variant="body1" paragraph>
+          We are developing an application aiming to provide US Employment Insights for international employees
+          using data from LinkedIn Job Postings and H1B Visa Statistics. The goal is to help international job
+          seekers gain a better understanding of job opportunities and H1B visa sponsorship chances when exploring
+          job postings.
+        </Typography>
+        <Typography variant="body1" paragraph>
+          Main features of our website include:
+        </Typography>
+        <List sx={{ listStyleType: 'disc', pl: 4 }}>
+          <ListItem sx={{ display: 'list-item' }}>
+            <ListItemText primary="Interactive visualizations of H1B lottery entries and high selection rates separated by industries, with information of individual company name, location, and salary range." />
+          </ListItem>
+          <ListItem sx={{ display: 'list-item' }}>
+            <ListItemText primary="Extensive statistics for a specific company with associated H1B data, and tables of previous listed job titles and descriptions, helping employees learn about potential opportunities for open positions." />
+          </ListItem>
+          <ListItem sx={{ display: 'list-item' }}>
+            <ListItemText primary="Customized filters for job search based on users’ preferred location and salary expectations, comparing their prospects across different companies in selected industries for the H1B lottery." />
+          </ListItem>
+        </List>
+      </Box>
+
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
+          Explore Our Sections
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>Industry</Typography>
+              <Typography variant="body2">
+                Discover which industries have higher H1B approval rates and get insights into employment trends.
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>Company</Typography>
+              <Typography variant="body2">
+                Dive into company-level statistics, historical job postings, and H1B approval patterns.
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>H1B Stats</Typography>
+              <Typography variant="body2">
+                Analyze H1B application volumes, approval rates, and demographic factors to guide your decisions.
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>Job</Typography>
+              <Typography variant="body2">
+                Search and filter for jobs based on location, salary ranges, and historical visa sponsorship likelihood.
+              </Typography>
+            </Paper>
+          </Grid>
         </Grid>
-      </Grid>
+      </Box>
     </Container>
   );
 };

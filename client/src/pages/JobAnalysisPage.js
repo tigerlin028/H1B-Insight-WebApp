@@ -195,7 +195,7 @@ const JobAnalysisPage = () => {
             <Typography variant="h4">
               {remoteStats.length > 0 ? (
                 `${(remoteStats.find(item => item.work_arrangement === 'Remote Allowed')?.total_applications / 
-                  remoteStats.reduce((acc, curr) => acc + curr.total_applications, 0) * 100).toFixed(1)}%`
+                  remoteStats.reduce((acc, curr) => acc + Number(curr.total_applications), 0) * 100).toFixed(1)}%`
               ) : 'N/A'}
             </Typography>
           </Paper>
@@ -208,9 +208,7 @@ const JobAnalysisPage = () => {
             </Typography>
             <Typography variant="h4">
               {levelStats.length > 0 ? (
-                `$${Math.round(levelStats.reduce((acc, curr) => 
-                  acc + curr.avg_salary_range, 0) / levelStats.length).toLocaleString()}`
-              ) : 'N/A'}
+                `$${Math.round(levelStats.reduce((acc, curr) => acc + Number(curr.avg_salary_range), 0) / levelStats.length).toLocaleString()}`) : 'N/A'}
             </Typography>
           </Paper>
         </Grid>
