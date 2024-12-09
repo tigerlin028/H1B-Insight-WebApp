@@ -1,6 +1,29 @@
 import React from 'react';
 import { Container, Typography, Box, Grid, Paper, List, ListItem, ListItemText } from '@mui/material';
 
+const sections = [
+  {
+    title: 'Industry',
+    description: 'Discover which industries have higher H1B approval rates and get insights into employment trends.',
+    path: '/industry'
+  },
+  {
+    title: 'Company',
+    description: 'Dive into company-level statistics, historical job postings, and H1B approval patterns.',
+    path: '/companies'
+  },
+  {
+    title: 'H1B Stats',
+    description: 'Analyze H1B application volumes, approval rates, and demographic factors to guide your decisions.',
+    path: '/h1b'
+  },
+  {
+    title: 'Job',
+    description: 'Search and filter for jobs based on location, salary ranges, and historical visa sponsorship likelihood.',
+    path: '/jobs'
+  }
+];
+
 const HomePage = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -106,38 +129,32 @@ const HomePage = () => {
           Explore Our Sections
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} md={3}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>Industry</Typography>
-              <Typography variant="body2">
-                Discover which industries have higher H1B approval rates and get insights into employment trends.
-              </Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>Company</Typography>
-              <Typography variant="body2">
-                Dive into company-level statistics, historical job postings, and H1B approval patterns.
-              </Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>H1B Stats</Typography>
-              <Typography variant="body2">
-                Analyze H1B application volumes, approval rates, and demographic factors to guide your decisions.
-              </Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>Job</Typography>
-              <Typography variant="body2">
-                Search and filter for jobs based on location, salary ranges, and historical visa sponsorship likelihood.
-              </Typography>
-            </Paper>
-          </Grid>
+          {sections.map((section) => (
+            <Grid item xs={12} md={3} key={section.title}>
+              <a 
+                href={`http://localhost:3000${section.path}`}
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                <Paper 
+                  sx={{ 
+                    p: 2,
+                    cursor: 'pointer',
+                    transition: 'box-shadow 0.3s',
+                    '&:hover': {
+                      boxShadow: 6
+                    }
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom>
+                    {section.title}
+                  </Typography>
+                  <Typography variant="body2">
+                    {section.description}
+                  </Typography>
+                </Paper>
+              </a>
+            </Grid>
+          ))}
         </Grid>
       </Box>
     </Container>

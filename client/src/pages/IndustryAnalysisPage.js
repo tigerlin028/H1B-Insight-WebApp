@@ -150,30 +150,40 @@ const IndustryAnalysisPage = () => {
   // Define columns for the DataGrid
   const columns = [
     { field: 'industry', headerName: 'Industry', flex: 1 },
-    { field: 'company_size', headerName: 'Company Size', flex: 1 },
+    { 
+      field: 'company_size', 
+      headerName: 'Company Size', 
+      flex: 1,
+      renderCell: (params) => {
+        const color = params.value === 'Enterprise' ? '#4CAF50' : 
+                     params.value === 'SMB' ? '#FFC107' : '#FF5722';
+        return (
+          <Typography sx={{ color: color, fontWeight: 'bold' }}>
+            {params.value}
+          </Typography>
+        );
+      }
+    },
     {
       field: 'company_count',
       headerName: 'Company Count',
       flex: 1,
-      type: 'number'
-    },
-    {
-      field: 'avg_followers',
-      headerName: 'Avg Followers',
-      flex: 1,
-      type: 'number'
+      type: 'number',
+      valueFormatter: (params) => params.value.toLocaleString()
     },
     {
       field: 'avg_employees',
       headerName: 'Avg Employees',
       flex: 1,
-      type: 'number'
+      type: 'number',
+      valueFormatter: (params) => params.value.toLocaleString()
     },
     {
       field: 'total_jobs',
       headerName: 'Total Jobs',
       flex: 1,
-      type: 'number'
+      type: 'number',
+      valueFormatter: (params) => params.value.toLocaleString()
     },
     {
       field: 'avg_max_salary',
@@ -269,8 +279,14 @@ const IndustryAnalysisPage = () => {
             </Typography>
             <Typography variant="h4">
               {salaryData.length > 0
-                ? `$${Math.round(salaryData.reduce((acc, curr) =>
-                    acc + (curr.avg_min_salary + curr.avg_max_salary) / 2, 0) / salaryData.length).toLocaleString()}`
+                ? `$${Math.round(
+                    salaryData.reduce((acc, curr) => {
+                      const avgSalary = (Number(curr.avg_min_salary || 0) + Number(curr.avg_max_salary || 0)) / 2;
+                      // Add console.log to check values
+                      console.log('Current salary:', avgSalary, 'Min:', curr.avg_min_salary, 'Max:', curr.avg_max_salary);
+                      return acc + avgSalary;
+                    }, 0) / salaryData.length
+                  ).toLocaleString()}`
                 : 'N/A'
               }
             </Typography>

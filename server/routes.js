@@ -353,6 +353,121 @@ const industrySizeStats = async function(req, res) {
   }
 }
 
+// Route 11: Individual company statistics
+const companyDetailedStats = async function(req, res) {
+  const query = `
+    WITH company_tiers AS (
+      SELECT
+        c.company_id,
+        CASE
+          WHEN ec.employee_count < 100 THEN 'Startup'
+          WHEN ec.employee_count < 1000 THEN 'SMB'
+          ELSE 'Enterprise'
+        END as tier
+      FROM companies c
+      JOIN employee_counts ec ON c.company_id = ec.company_id
+    ),
+    company_stats AS (
+      SELECT 
+        c.company_id,
+        c.name as company_name,
+        ci.industry,
+        ct.tier,
+        ec.employee_count,
+        ec.follower_count,
+        COUNT(*) as total_h1b_applications,  -- Changed from COUNT(DISTINCT h.no)
+        SUM(CASE WHEN h.status = 1 THEN 1 ELSE 0 END) as approved_h1b_applications,
+        ROUND(
+          CASE 
+            WHEN COUNT(*) > 0 THEN 
+              (SUM(CASE WHEN h.status = 1 THEN 1 ELSE 0 END)::DECIMAL * 100.0) / COUNT(*)
+            ELSE 0 
+          END,
+          2
+        ) as h1b_approval_rate,
+        ROUND(AVG(s.max_salary)) as avg_max_salary,
+        ROUND(AVG(s.min_salary)) as avg_min_salary,
+        COUNT(DISTINCT p.job_id) as total_job_postings
+      FROM companies c
+      LEFT JOIN company_industries ci ON c.company_id = ci.company_id
+      LEFT JOIN employee_counts ec ON c.company_id = ec.company_id
+      LEFT JOIN h1b h ON c.company_id = h.matched_company_id
+      LEFT JOIN postings p ON c.company_id = p.company_id
+      LEFT JOIN salary s ON p.job_id = s.job_id
+      LEFT JOIN company_tiers ct ON c.company_id = ct.company_id
+      WHERE s.pay_period = 'YEARLY'
+      AND h.matched_company_id IS NOT NULL  -- Added to ensure valid H1B records
+      AND h.status IS NOT NULL             -- Added to ensure valid status
+      GROUP BY c.company_id, c.name, ci.industry, ct.tier, ec.employee_count, ec.follower_count
+    )
+    SELECT *
+    FROM company_stats
+    WHERE total_h1b_applications >= 5
+    ORDER BY total_h1b_applications DESC`;
+
+  try {
+    const data = await connection.query(query);
+    res.json(data.rows);
+  } catch (err) {
+    console.log(err);
+    res.json([]);
+  }
+}
+
+// Route 12: H1B trends over time by company
+const companyH1BTrends = async function(req, res) {
+  const query = `
+    SELECT 
+      c.name as company_name,
+      h.lottery_year as year, 
+      COUNT(*) as applications,
+      SUM(CASE WHEN h.status = 1 THEN 1 ELSE 0 END) as approvals,
+      ROUND((SUM(CASE WHEN h.status = 1 THEN 1 ELSE 0 END)::DECIMAL / COUNT(*)) * 100, 2) as approval_rate
+    FROM h1b h
+    JOIN companies c ON h.matched_company_id = c.company_id
+    WHERE h.lottery_year IS NOT NULL
+    GROUP BY c.name, h.lottery_year
+    HAVING COUNT(*) >= 5
+    ORDER BY c.name, year`;
+
+  try {
+    const data = await connection.query(query);
+    res.json(data.rows);
+  } catch (err) {
+    console.log(err);
+    res.json([]);
+  }
+}
+
+// Route 13: Company salary distribution
+const companySalaryDistribution = async function(req, res) {
+  const query = `
+    SELECT 
+      c.name as company_name,  -- Changed from c.company_name to c.name
+      ci.industry,
+      ROUND(AVG(s.min_salary)) as avg_min_salary,
+      ROUND(AVG(s.max_salary)) as avg_max_salary,
+      COUNT(DISTINCT p.job_id) as job_count,
+      ec.employee_count
+    FROM companies c
+    JOIN company_industries ci ON c.company_id = ci.company_id
+    JOIN postings p ON c.company_id = p.company_id
+    JOIN salary s ON p.job_id = s.job_id
+    JOIN employee_counts ec ON c.company_id = ec.company_id
+    WHERE s.pay_period = 'YEARLY'
+    GROUP BY c.name, ci.industry, ec.employee_count
+    HAVING COUNT(DISTINCT p.job_id) >= 5
+    ORDER BY avg_max_salary DESC`;
+
+  try {
+    const data = await connection.query(query);
+    res.json(data.rows);
+  } catch (err) {
+    console.log(err);
+    res.json([]);
+  }
+}
+
 module.exports = {
   industryApproval,
   industrySalary,
@@ -363,5 +478,8 @@ module.exports = {
   companyTierStats,
   genderStats,
   stateStats,
-  industrySizeStats
+  industrySizeStats,
+  companyDetailedStats,
+  companyH1BTrends,
+  companySalaryDistribution
 };

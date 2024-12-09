@@ -19,6 +19,11 @@ app.get('/company/tier-stats', routes.companyTierStats);
 app.get('/h1b/gender-stats', routes.genderStats);
 app.get('/company/state-stats', routes.stateStats);
 app.get('/industry/size-stats', routes.industrySizeStats);
+
+app.get('/companies/detailed-stats', routes.companyDetailedStats);
+app.get('/companies/salary-distribution', routes.companySalaryDistribution);
+app.get('/companies/h1b-trends', routes.companyH1BTrends);
+
 app.listen(config.server_port, () => {
   console.log(`Server running at http://${config.server_host}:${config.server_port}/`)
 });

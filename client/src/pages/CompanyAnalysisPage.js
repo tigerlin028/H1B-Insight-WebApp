@@ -1,71 +1,325 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Paper } from '@mui/material';
+import { Container, Typography, Grid, Paper, Box } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Bar, Line, Pie } from 'react-chartjs-2';
 
-const CompanyDashboardPage = () => {
-  const [data, setData] = useState([]);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+const CompanyAnalysisPage = () => {
+  const [companyStats, setCompanyStats] = useState([]);
+  const [salaryData, setSalaryData] = useState([]);
+  const [h1bTrends, setH1bTrends] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetching data from /company/tier-stats endpoint as an example
-    // Once you have a dedicated endpoint returning historical job titles,
-    // descriptions, and visa info, update this fetch call accordingly.
-    fetch('http://localhost:8080/company/tier-stats')
-      .then(response => response.json())
-      .then(result => {
-        setData(result);
+    Promise.all([
+      fetch('http://localhost:8080/companies/detailed-stats'),
+      fetch('http://localhost:8080/companies/salary-distribution'),
+      fetch('http://localhost:8080/companies/h1b-trends')
+    ])
+      .then(([statsRes, salaryRes, trendsRes]) => {
+        if (!statsRes.ok) throw new Error(`Stats API error: ${statsRes.status}`);
+        if (!salaryRes.ok) throw new Error(`Salary API error: ${salaryRes.status}`);
+        if (!trendsRes.ok) throw new Error(`Trends API error: ${trendsRes.status}`);
+        
+        return Promise.all([statsRes.json(), salaryRes.json(), trendsRes.json()]);
+      })
+      .then(([statsData, salaryData, trendsData]) => {
+        setCompanyStats(statsData);
+        setSalaryData(salaryData);
+        setH1bTrends(trendsData);
         setLoading(false);
       })
       .catch(error => {
-        console.error('Error fetching company data:', error);
+        console.error('Error fetching data:', error);
         setLoading(false);
       });
   }, []);
 
-  // Define columns based on the data returned by /company/tier-stats
-  // Adjust these to reflect actual fields once you have the H1B historical endpoint
+  // Get top 10 companies by salary
+  const topSalaryCompanies = salaryData
+    .sort((a, b) => b.avg_max_salary - a.avg_max_salary)
+    .slice(0, 10);
+
+  // Get top 10 companies by h1b applications
+  const topH1BCompanies = companyStats
+    .sort((a, b) => b.total_h1b_applications - a.total_h1b_applications)
+    .slice(0, 10);
+
+  const salaryChartData = {
+    labels: topSalaryCompanies.map(item => item.company_name),
+    datasets: [
+      {
+        label: 'Min Salary',
+        data: topSalaryCompanies.map(item => item.avg_min_salary),
+        backgroundColor: '#990000',
+      },
+      {
+        label: 'Max Salary',
+        data: topSalaryCompanies.map(item => item.avg_max_salary),
+        backgroundColor: '#011F5B',
+      }
+    ]
+  };
+
+  const h1bChartData = {
+    labels: topH1BCompanies.map(item => item.company_name),
+    datasets: [{
+      label: 'Total H1B Applications',
+      data: topH1BCompanies.map(item => item.total_h1b_applications),
+      borderColor: '#990000',
+      backgroundColor: '#990000',
+      tension: 0.1
+    }]
+  };
+
+  const salaryOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'Top 10 Companies by Salary Range'
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Salary ($)'
+        },
+        ticks: {
+          callback: value => '$' + value.toLocaleString()
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Company'
+        }
+      }
+    }
+  };
+
+  const h1bOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'Top 10 Companies by H1B Applications'
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Number of Applications'
+        }
+      },
+      x: {
+        title: {
+          display: true,
+          text: 'Company'
+        }
+      }
+    }
+  };
+
   const columns = [
+    { field: 'company_name', headerName: 'Company', flex: 1 },
     { field: 'industry', headerName: 'Industry', flex: 1 },
-    { field: 'company_size', headerName: 'Company Size', flex: 1 },
-    { field: 'company_count', headerName: 'Company Count', flex: 1 },
-    { field: 'avg_followers', headerName: 'Avg Followers', flex: 1 },
-    { field: 'avg_employees', headerName: 'Avg Employees', flex: 1 },
-    { field: 'total_jobs', headerName: 'Total Jobs', flex: 1 },
-    { field: 'avg_max_salary', headerName: 'Avg Max Salary', flex: 1 },
-    { field: 'h1b_approval_rate', headerName: 'H1B Approval Rate (%)', flex: 1 },
+    { 
+      field: 'tier',
+      headerName: 'Company Tier',
+      flex: 1,
+      renderCell: (params) => {
+        const color = params.value === 'Enterprise' ? '#4CAF50' : 
+                     params.value === 'SMB' ? '#FFC107' : '#FF5722';
+        return (
+          <Typography sx={{ color: color, fontWeight: 'bold' }}>
+            {params.value}
+          </Typography>
+        );
+      }
+    },
+    { 
+      field: 'total_h1b_applications', 
+      headerName: 'H1B Applications',
+      flex: 1,
+      type: 'number'
+    },
+    { 
+      field: 'h1b_approval_rate', 
+      headerName: 'H1B Approval Rate',
+      flex: 1,
+      valueFormatter: (params) => `${params.value}%`
+    },
+    { 
+      field: 'avg_max_salary', 
+      headerName: 'Avg Max Salary',
+      flex: 1,
+      valueFormatter: (params) => `$${params.value.toLocaleString()}`
+    },
+    { 
+      field: 'employee_count', 
+      headerName: 'Employees',
+      flex: 1,
+      valueFormatter: (params) => params.value.toLocaleString()
+    }
   ];
 
-  // Convert data from API into DataGrid-compatible rows
-  // Assign a unique 'id' for each row
-  const rows = data.map((item, index) => ({ id: index, ...item }));
+  const rows = companyStats.map((item, index) => ({
+    id: index,
+    ...item
+  }));
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Typography variant="h4" sx={{ mb: 4 }}>
-        Company Dashboard
-      </Typography>
-      <Typography variant="body1" sx={{ mb: 2 }}>
-        Explore company-specific H1B metrics, including industry details, company sizes,
-        salary averages, and approval rates.
+        Company Analysis
       </Typography>
 
-      <Paper sx={{ height: 600, p: 3 }}>
-        {loading ? (
-          <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
-            Loading data...
-          </Typography>
-        ) : (
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            pageSize={10}
-            rowsPerPageOptions={[10, 25, 50]}
-            disableSelectionOnClick
-          />
-        )}
-      </Paper>
+      <Grid container spacing={3}>
+        {/* Summary Statistics */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>
+              Average H1B Approval Rate
+            </Typography>
+            <Typography variant="h4">
+              {companyStats.length > 0
+                ? `${Math.round(
+                    companyStats.reduce((acc, curr) => acc + Number(curr.h1b_approval_rate || 0), 0) / 
+                    companyStats.filter(company => company.h1b_approval_rate != null).length
+                  )}%`
+                : 'N/A'
+              }
+            </Typography>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>
+              Average Salary Range
+            </Typography>
+            <Typography variant="h4">
+              {salaryData.length > 0
+                ? `$${Math.round(
+                    salaryData.reduce((acc, curr) => 
+                      acc + (Number(curr.avg_min_salary || 0) + Number(curr.avg_max_salary || 0)) / 2, 0
+                    ) / salaryData.length
+                  ).toLocaleString()}`
+                : 'N/A'
+              }
+            </Typography>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>
+              Total Companies Analyzed
+            </Typography>
+            <Typography variant="h4">
+              {companyStats.length}
+            </Typography>
+          </Paper>
+        </Grid>
+
+        {/* Salary Chart */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Top 10 Companies by Salary Range
+            </Typography>
+            <Box sx={{ height: 400, position: 'relative' }}>
+              {loading ? (
+                <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
+                  Loading data...
+                </Typography>
+              ) : (
+                <Bar data={salaryChartData} options={salaryOptions} />
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+
+        {/* H1B Applications Chart */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Top 10 Companies by H1B Applications
+            </Typography>
+            <Box sx={{ height: 400, position: 'relative' }}>
+              {loading ? (
+                <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
+                  Loading data...
+                </Typography>
+              ) : (
+                <Line data={h1bChartData} options={h1bOptions} />
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+
+        {/* Company Details Table */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3, height: 600 }}>
+            <Typography variant="h6" gutterBottom>
+              Detailed Company Information
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              Explore company-specific H1B metrics, including application numbers,
+              approval rates, salary ranges, and employee counts.
+            </Typography>
+            {loading ? (
+              <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
+                Loading data...
+                </Typography>
+            ) : (
+              <DataGrid
+                rows={rows}
+                columns={columns}
+                pageSize={10}
+                rowsPerPageOptions={[10, 25, 50]}
+                disableSelectionOnClick
+              />
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
     </Container>
   );
 };
 
-export default CompanyDashboardPage;
+export default CompanyAnalysisPage;
