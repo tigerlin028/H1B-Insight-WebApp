@@ -1,5 +1,5 @@
 import React from 'react';
-import { Container, Typography, Grid, Paper, Box } from '@mui/material';
+import { Container, Typography, Grid, Paper, Box, TextField } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import {
   Chart as ChartJS,
@@ -30,6 +30,7 @@ const IndustryAnalysisPage = () => {
   const [sizeData, setSizeData] = React.useState([]);
   const [tierStatsData, setTierStatsData] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   React.useEffect(() => {
     Promise.all([
@@ -201,6 +202,9 @@ const IndustryAnalysisPage = () => {
 
   // Convert tier stats data into DataGrid-compatible rows
   const rows = tierStatsData.map((item, index) => ({ id: index, ...item }));
+  const filteredRows = rows.filter(row => 
+    row.industry.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
@@ -245,80 +249,97 @@ const IndustryAnalysisPage = () => {
           </Paper>
         </Grid>
 
-        {/* Industry Details Table */}
-        <Grid item xs={12} sx={{ mb: 6 }}>
-          <Paper sx={{ p: 3, height: 600 }}>
-            <Typography variant="h6" gutterBottom>
-              Detailed Industry Information
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-                Explore industries-specific H1B metrics, including industry details, company sizes,
-                salary averages, and approval rates.
-            </Typography>
+      {/* Summary Statistics */}
+      <Grid item xs={12} md={4}>
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
+            Average Industry Salary
+          </Typography>
+          <Typography variant="h4">
+            {salaryData.length > 0
+              ? `$${Math.round(
+                  salaryData.reduce((acc, curr) => {
+                    const avgSalary = (Number(curr.avg_min_salary || 0) + Number(curr.avg_max_salary || 0)) / 2;
+                    return acc + avgSalary;
+                  }, 0) / salaryData.length
+                ).toLocaleString()}`
+              : 'N/A'
+            }
+          </Typography>
+        </Paper>
+      </Grid>
+
+      <Grid item xs={12} md={4}>
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
+            Average Company Size
+          </Typography>
+          <Typography variant="h4">
+            {sizeData.length > 0
+              ? Math.round(sizeData.reduce((acc, curr) =>
+                  acc + Number(curr.avg_employees), 0) / sizeData.length).toLocaleString()
+              : 'N/A'
+            }
+          </Typography>
+        </Paper>
+      </Grid>
+
+      <Grid item xs={12} md={4}>
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
+            Total Industries Analyzed
+          </Typography>
+          <Typography variant="h4">
+            {salaryData.length}
+          </Typography>
+        </Paper>
+      </Grid>
+
+      {/* Industry Details Table */}
+      <Grid item xs={12}>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Detailed Industry Information
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Explore industries-specific H1B metrics, including industry details, company sizes,
+            salary averages, and approval rates.
+          </Typography>
+          
+          {/* Search Input */}
+          <TextField
+            fullWidth
+            sx={{ mb: 2 }}
+            label="Search by Industry"
+            variant="outlined"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Enter industry name..."
+          />
+          
+          <Box sx={{ height: 650 }}>
             {loading ? (
               <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
                 Loading data...
               </Typography>
-            ) : (
+            ) : filteredRows.length > 0 ? (
               <DataGrid
-                rows={rows}
+                rows={filteredRows}
                 columns={columns}
                 pageSize={10}
-                rowsPerPageOptions={[10, 25, 50]}
                 disableSelectionOnClick
               />
+            ) : (
+              <Typography variant="body1" sx={{ textAlign: 'center', pt: 4 }}>
+                No matching industries found
+              </Typography>
             )}
-          </Paper>
-        </Grid>
-
-        {/* Summary Statistics */}
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h6" gutterBottom>
-              Average Industry Salary
-            </Typography>
-            <Typography variant="h4">
-              {salaryData.length > 0
-                ? `$${Math.round(
-                    salaryData.reduce((acc, curr) => {
-                      const avgSalary = (Number(curr.avg_min_salary || 0) + Number(curr.avg_max_salary || 0)) / 2;
-                      // Add console.log to check values
-                      console.log('Current salary:', avgSalary, 'Min:', curr.avg_min_salary, 'Max:', curr.avg_max_salary);
-                      return acc + avgSalary;
-                    }, 0) / salaryData.length
-                  ).toLocaleString()}`
-                : 'N/A'
-              }
-            </Typography>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h6" gutterBottom>
-              Average Company Size
-            </Typography>
-            <Typography variant="h4">
-              {sizeData.length > 0
-                ? Math.round(sizeData.reduce((acc, curr) =>
-                    acc + Number(curr.avg_employees), 0) / sizeData.length).toLocaleString()
-                : 'N/A'
-              }
-            </Typography>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h6" gutterBottom>
-              Total Industries Analyzed
-            </Typography>
-            <Typography variant="h4">
-              {salaryData.length}
-            </Typography>
-          </Paper>
-        </Grid>
+          </Box>
+        </Paper>
       </Grid>
+    </Grid>
+
+
     </Container>
   );
 };

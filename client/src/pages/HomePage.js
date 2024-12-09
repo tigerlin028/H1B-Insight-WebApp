@@ -46,7 +46,7 @@ const HomePage = () => {
           CIS550 Group 39
         </Typography>
         <Typography variant="body1" paragraph>
-          Team Members: Caitlyn Cui, Jiahua Liao, Joyce Chen, Xiaotian Lin
+          Team Members: Joyce Chen, Caitlyn Cui, Jiahua Liao, Xiaotian Lin
         </Typography>
       </Box>
 
@@ -84,11 +84,9 @@ const HomePage = () => {
             <ListItemText primary="Company Grade focused on factors relevant for H1B Holders in US" />
           </ListItem>
           <ListItem sx={{ display: 'list-item' }}>
-            <ListItemText primary="Options to Search for H1B Sponsors by Job Title, By Name" />
+            <ListItemText primary="Detailed Statistics on selected industries or companies based on search keywords" />
           </ListItem>
-          <ListItem sx={{ display: 'list-item' }}>
-            <ListItemText primary="Multiple Reports on H1B like Highest Paid Companies, Highest Paid Cities, Highest Paid Jobs, etc." />
-          </ListItem>
+
         </List>
 
         <Typography variant="body1" paragraph>
@@ -119,7 +117,7 @@ const HomePage = () => {
             <ListItemText primary="Extensive statistics for a specific company with associated H1B data, and tables of previous listed job titles and descriptions, helping employees learn about potential opportunities for open positions." />
           </ListItem>
           <ListItem sx={{ display: 'list-item' }}>
-            <ListItemText primary="Customized filters for job search based on users’ preferred location and salary expectations, comparing their prospects across different companies in selected industries for the H1B lottery." />
+            <ListItemText primary="Customized filters for job search based on particular industries or companies names, provided with views across different fields in both ascending and descending orders." />
           </ListItem>
         </List>
       </Box>

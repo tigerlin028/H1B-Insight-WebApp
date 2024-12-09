@@ -1,5 +1,6 @@
 import React from 'react';
-import { Container, Typography, Grid, Paper, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Container, Typography, Grid, Paper, Box, TextField } from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -22,7 +23,7 @@ ChartJS.register(
   Legend
 );
 
-// Helper function to format large numbers into readable strings
+// Helper function to format large numbers
 function formatLargeNumber(num) {
   if (num < 1000) return num.toString();
   const units = ['K', 'M', 'B', 'T'];
@@ -41,6 +42,7 @@ const H1BAnalysisPage = () => {
   const [industryApprovalStats, setIndustryApprovalStats] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [industryLoading, setIndustryLoading] = React.useState(true);
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   React.useEffect(() => {
     Promise.all([
@@ -51,15 +53,8 @@ const H1BAnalysisPage = () => {
         Promise.all([nationalityRes.json(), genderRes.json()])
       )
       .then(([nationalityData, genderData]) => {
-        setNationalityStats(nationalityData.slice(0, 10)); // Top 10 countries
+        setNationalityStats(nationalityData.slice(0, 10));
         setGenderStats(genderData);
-        // Debugging logs
-        const totalApps = nationalityData.reduce((acc, curr) => acc + Number(curr.total_applications || 0), 0);
-        const totalApproved = nationalityData.reduce((acc, curr) => acc + Number(curr.approved_applications || 0), 0);
-
-        console.log('Total Applications:', totalApps);
-        console.log('Total Approved Applications:', totalApproved);
-        console.log('Nationality Stats:', nationalityData);
         setLoading(false);
       })
       .catch(err => {
@@ -81,7 +76,31 @@ const H1BAnalysisPage = () => {
       });
   }, []);
 
-  // Sort arrays for separate charts:
+  const industryColumns = [
+    { field: 'industry', headerName: 'Industry', flex: 1 },
+    { 
+      field: 'total_applications', 
+      headerName: 'Total Applications',
+      flex: 1,
+      type: 'number',
+      valueFormatter: (params) => params.value.toLocaleString()
+    },
+    { 
+      field: 'approved_applications', 
+      headerName: 'Approved Applications',
+      flex: 1,
+      type: 'number',
+      valueFormatter: (params) => params.value.toLocaleString()
+    },
+    {
+      field: 'approval_rate',
+      headerName: 'Approval Rate',
+      flex: 1,
+      valueFormatter: (params) => `${parseFloat(params.value).toFixed(1)}%`
+    }
+  ];
+
+  // Sort arrays for separate charts
   const topByApplications = [...nationalityStats].sort((a, b) => b.total_applications - a.total_applications);
   const topByApprovalRate = [...nationalityStats].sort((a, b) => parseFloat(b.approval_rate) - parseFloat(a.approval_rate));
 
@@ -165,20 +184,25 @@ const H1BAnalysisPage = () => {
       title: {
         display: true,
         text: 'Gender Distribution of H1B Applications',
-      },
+      }
     },
+    cutout: '50%' 
   };
 
-  // Calculate overall approval rate from the top 10 countries
+  const filteredIndustryRows = industryApprovalStats
+  .filter(row => 
+    row.industry.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+  .map((item, index) => ({
+    id: index,
+    ...item
+  }));
+
+  // Calculate overall stats
   const totalApps = nationalityStats.reduce((acc, curr) => acc + Number(curr.total_applications || 0), 0);
   const totalApproved = nationalityStats.reduce((acc, curr) => acc + Number(curr.approved_applications || 0), 0);
   const overallApprovalRate = totalApps > 0 ? ((totalApproved / totalApps) * 100).toFixed(1) : 'N/A';
-
   const totalAppsFormatted = totalApps > 0 ? formatLargeNumber(totalApps) : 'N/A';
-
-<Typography variant="h4">
-  {totalAppsFormatted}
-</Typography>
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
@@ -187,53 +211,59 @@ const H1BAnalysisPage = () => {
       </Typography>
 
       <Grid container spacing={3}>
-        {/* Industry-Specific H1B Dashboard Table */}
+        {/* Industry Table */}
         <Grid item xs={12}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Industry-Specific H1B Lottery Selection Rates and Demographics
             </Typography>
-            {industryLoading ? (
-              <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
-                Loading industry data...
-              </Typography>
-            ) : (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Industry</TableCell>
-                      <TableCell align="right">Total Applications</TableCell>
-                      <TableCell align="right">Approved Applications</TableCell>
-                      <TableCell align="right">Approval Rate (%)</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {industryApprovalStats.map((row) => {
-                        const approvalRate = row.approval_rate ? parseFloat(row.approval_rate) : null;
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              Explore industry-specific H1B metrics, including application numbers,
+              approval rates, and selection rates.
+            </Typography>
 
-                    return (
-                    <TableRow key={row.industry}>
-                        <TableCell>{row.industry}</TableCell>
-                    <TableCell align="right">{row.total_applications?.toLocaleString() || 'N/A'}</TableCell>
-                       <TableCell align="right">{row.approved_applications?.toLocaleString() || 'N/A'}</TableCell>
-                    <TableCell align="right">
-                        {approvalRate !== null && Number.isFinite(approvalRate)
-                        ? `${approvalRate.toFixed(1)}%`
-                        : 'N/A'}
-                </TableCell>
-      </TableRow>
-    );
-  })}
-</TableBody>
+            {/* Search Input */}
+            <TextField
+              fullWidth
+              sx={{ mb: 2 }}
+              label="Search by Industry"
+              variant="outlined"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Enter industry name..."
+            />
 
-                </Table>
-              </TableContainer>
-            )}
+            <Box sx={{ height: 600 }}>
+              {industryLoading ? (
+                <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
+                  Loading industry data...
+                </Typography>
+              ) : filteredIndustryRows.length > 0 ? (
+                <DataGrid
+                  rows={filteredIndustryRows}
+                  columns={industryColumns}
+                  pageSize={10}
+                  disableSelectionOnClick
+                  sx={{
+                    '& .MuiDataGrid-columnHeaders': {
+                      backgroundColor: '#f5f5f5',
+                      borderBottom: 'none'
+                    },
+                    '& .MuiDataGrid-cell': {
+                      borderBottom: '1px solid #f0f0f0'
+                    }
+                  }}
+                />
+              ) : (
+                <Typography variant="body1" sx={{ textAlign: 'center', pt: 4 }}>
+                  No matching industries found
+                </Typography>
+              )}
+            </Box>
           </Paper>
         </Grid>
 
-        {/* Two separate charts */}
+        {/* Country Charts */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
@@ -292,13 +322,13 @@ const H1BAnalysisPage = () => {
           </Paper>
         </Grid>
 
-        {/* Gender Distribution */}
+        {/* Gender Charts */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
               Gender Distribution
             </Typography>
-            <Box sx={{ height: 400, position: 'relative' }}>
+            <Box sx={{ height: 350, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {loading ? (
                 <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
                   Loading data...
@@ -310,23 +340,34 @@ const H1BAnalysisPage = () => {
           </Paper>
         </Grid>
 
-        {/* Gender Approval Rates */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ p: 3, height:'100%' }}>
             <Typography variant="h6" gutterBottom>
               Gender Approval Rates
             </Typography>
-            <Box sx={{ p: 2 }}>
+            <Box sx={{ 
+              p: 2, 
+              height: 350,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-around'
+            }}>
               {genderStats.map(stat => {
                 const approvalRate = stat.approval_rate ? parseFloat(stat.approval_rate) : null;
                 const totalApplications = stat.total_applications || 0;
 
                 return (
-                  <Box key={stat.gender} sx={{ mb: 2 }}>
-                    <Typography variant="subtitle1">{stat.gender}</Typography>
+                  <Box key={stat.gender} sx={{ textAlign: 'center' }}>
+                    <Typography 
+                      variant="h4" 
+                      sx={{ fontWeight: 'bold', mb: 2, fontSize:'2rem' }}
+                    >
+                      {stat.gender}
+                    </Typography>
                     <Typography
-                      variant="h6"
+                      variant="body1"
                       color={approvalRate >= 75 ? 'success.main' : 'inherit'}
+                      sx={{ mb: 1 }}
                     >
                       Approval Rate: {approvalRate !== null ? `${approvalRate.toFixed(1)}%` : 'N/A'}
                     </Typography>
@@ -343,28 +384,30 @@ const H1BAnalysisPage = () => {
         {/* Summary Statistics */}
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h6" gutterBottom>
-              Total Applications (Top 10 Countries)
+            <Typography variant="h6" sx={{ fontSize: '1rem' }} gutterBottom>
+              Total Applications (Top 10)
             </Typography>
-            <Typography variant="h4">{totalAppsFormatted}</Typography>
+            <Typography variant="h4">
+              {totalAppsFormatted}
+            </Typography>
           </Paper>
         </Grid>
 
         <Grid item xs={12} md={4}>
-  <Paper sx={{ p: 3, textAlign: 'center' }}>
-    <Typography variant="h6" gutterBottom>
-      Overall Approval Rate (Top 10 Countries)
-    </Typography>
-    <Typography variant="h4">
-      {overallApprovalRate !== 'N/A' ? `${overallApprovalRate}%` : 'N/A'}
-    </Typography>
-  </Paper>
-</Grid>
+          <Paper sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="h6" sx={{ fontSize: '1rem' }} gutterBottom>
+              Overall Approval Rate (Top 10)
+            </Typography>
+            <Typography variant="h4">
+              {overallApprovalRate !== 'N/A' ? `${overallApprovalRate}%` : 'N/A'}
+            </Typography>
+          </Paper>
+        </Grid>
 
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h6" gutterBottom>
-              Top Country (by Applications)
+            <Typography variant="h6" sx={{ fontSize: '1rem' }} gutterBottom>
+              Top Country by Applications
             </Typography>
             <Typography variant="h4">
               {nationalityStats.length > 0 ? nationalityStats[0].country : 'N/A'}

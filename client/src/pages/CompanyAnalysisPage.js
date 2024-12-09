@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Grid, Paper, Box } from '@mui/material';
+import { Container, Typography, Grid, Paper, Box, TextField } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import {
   Chart as ChartJS,
@@ -30,6 +30,7 @@ const CompanyAnalysisPage = () => {
   const [salaryData, setSalaryData] = useState([]);
   const [h1bTrends, setH1bTrends] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -201,6 +202,10 @@ const CompanyAnalysisPage = () => {
     id: index,
     ...item
   }));
+  const filteredRows = rows.filter(row => 
+    row.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    row.industry.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
@@ -209,6 +214,43 @@ const CompanyAnalysisPage = () => {
       </Typography>
 
       <Grid container spacing={3}>
+
+        {/* Salary Chart */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Top 10 Companies by Salary Range
+            </Typography>
+            <Box sx={{ height: 400, position: 'relative' }}>
+              {loading ? (
+                <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
+                  Loading data...
+                </Typography>
+              ) : (
+                <Bar data={salaryChartData} options={salaryOptions} />
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+
+        {/* H1B Applications Chart */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Top 10 Companies by H1B Applications
+            </Typography>
+            <Box sx={{ height: 400, position: 'relative' }}>
+              {loading ? (
+                <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
+                  Loading data...
+                </Typography>
+              ) : (
+                <Line data={h1bChartData} options={h1bOptions} />
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+
         {/* Summary Statistics */}
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3, textAlign: 'center' }}>
@@ -256,45 +298,10 @@ const CompanyAnalysisPage = () => {
           </Paper>
         </Grid>
 
-        {/* Salary Chart */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Top 10 Companies by Salary Range
-            </Typography>
-            <Box sx={{ height: 400, position: 'relative' }}>
-              {loading ? (
-                <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
-                  Loading data...
-                </Typography>
-              ) : (
-                <Bar data={salaryChartData} options={salaryOptions} />
-              )}
-            </Box>
-          </Paper>
-        </Grid>
-
-        {/* H1B Applications Chart */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Top 10 Companies by H1B Applications
-            </Typography>
-            <Box sx={{ height: 400, position: 'relative' }}>
-              {loading ? (
-                <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
-                  Loading data...
-                </Typography>
-              ) : (
-                <Line data={h1bChartData} options={h1bOptions} />
-              )}
-            </Box>
-          </Paper>
-        </Grid>
 
         {/* Company Details Table */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 3, height: 600 }}>
+          <Paper sx={{ p: 3}}>
             <Typography variant="h6" gutterBottom>
               Detailed Company Information
             </Typography>
@@ -302,19 +309,35 @@ const CompanyAnalysisPage = () => {
               Explore company-specific H1B metrics, including application numbers,
               approval rates, salary ranges, and employee counts.
             </Typography>
-            {loading ? (
-              <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
-                Loading data...
+
+            {/* Search Input */}
+            <TextField
+              fullWidth
+              sx={{ mb: 2 }}
+              label="Search by Company or Industry"
+              variant="outlined"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Enter company or industry name..."
+            />
+            <Box sx={{ width: '100%', height: 650 }}>
+              {loading ? (
+                <Typography variant="h6" sx={{ textAlign: 'center', pt: 8 }}>
+                  Loading data...
+                  </Typography>
+              ) : filteredRows.length > 0 ? (
+                <DataGrid
+                  rows={filteredRows}
+                  columns={columns}
+                  pageSize={10}
+                  disableSelectionOnClick
+                />
+              ) : (
+                <Typography variant="body1" sx={{ textAlign: 'center', pt: 4 }}>
+                  No matching companies found
                 </Typography>
-            ) : (
-              <DataGrid
-                rows={rows}
-                columns={columns}
-                pageSize={10}
-                rowsPerPageOptions={[10, 25, 50]}
-                disableSelectionOnClick
-              />
-            )}
+              )}
+            </Box>
           </Paper>
         </Grid>
       </Grid>
