@@ -5,3 +5,4 @@ node_modules
 **/*.pack
 client/node_modules/.cache/
 client/node_modules/.cache/default-development
+server/config/dev.js

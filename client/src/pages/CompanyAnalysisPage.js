@@ -12,7 +12,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Bar, Line, Pie } from 'react-chartjs-2';
+import { Bar, Line } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
@@ -28,7 +28,6 @@ ChartJS.register(
 const CompanyAnalysisPage = () => {
   const [companyStats, setCompanyStats] = useState([]);
   const [salaryData, setSalaryData] = useState([]);
-  const [h1bTrends, setH1bTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -45,10 +44,9 @@ const CompanyAnalysisPage = () => {
         
         return Promise.all([statsRes.json(), salaryRes.json(), trendsRes.json()]);
       })
-      .then(([statsData, salaryData, trendsData]) => {
+      .then(([statsData, salaryData]) => {
         setCompanyStats(statsData);
         setSalaryData(salaryData);
-        setH1bTrends(trendsData);
         setLoading(false);
       })
       .catch(error => {

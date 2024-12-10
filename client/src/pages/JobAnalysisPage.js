@@ -32,18 +32,15 @@ const PENN_BLUE = '#011F5B';
 
 const JobAnalysisDashboard = () => {
   const [jobData, setJobData] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     fetch('http://localhost:8080/companies/salary-distribution')
       .then(res => res.json())
       .then(data => {
         setJobData(data);
-        setLoading(false);
       })
       .catch(err => {
         console.error(err);
-        setLoading(false);
       });
   }, []);
 

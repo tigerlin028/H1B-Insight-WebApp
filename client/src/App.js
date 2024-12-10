@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CssBaseline, ThemeProvider } from '@mui/material'
 import { createTheme } from "@mui/material/styles";
-
+import { AuthProvider } from './context/AuthContext';
 import NavBar from './components/NavBar';
 import HomePage from './pages/HomePage';
 import IndustryAnalysisPage from './pages/IndustryAnalysisPage';
@@ -26,18 +26,20 @@ export const theme = createTheme({
 
 export default function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <BrowserRouter>
-        <NavBar />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/industry" element={<IndustryAnalysisPage />} />
-          <Route path="/companies" element={<CompanyAnalysisPage />} />
-          <Route path="/h1b" element={<H1BAnalysisPage />} />
-          <Route path="/jobs" element={<JobAnalysisPage />} />
-        </Routes>
-      </BrowserRouter>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <BrowserRouter>
+          <NavBar />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/industry" element={<IndustryAnalysisPage />} />
+            <Route path="/companies" element={<CompanyAnalysisPage />} />
+            <Route path="/h1b" element={<H1BAnalysisPage />} />
+            <Route path="/jobs" element={<JobAnalysisPage />} />
+          </Routes>
+        </BrowserRouter>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
