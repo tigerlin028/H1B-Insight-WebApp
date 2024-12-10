@@ -1,5 +1,4 @@
 node_modules
 .env
 .DS_Store
-**/.cache/
-**/*.pack
+client/node_modules/.cache
