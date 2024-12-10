@@ -18,8 +18,22 @@ const pool = new Pool({
 const cacheManager = {
   // Initialize cache
   initCache: function() {
-    return this.warmCache();
+    const startTime = Date.now();
+    console.log('Starting cache initialization...');
+
+    return this.warmCache()
+      .then(() => {
+        const duration = (Date.now() - startTime) / 1000;
+        console.log(`Cache initialization completed in ${duration} seconds`);
+        return true;
+      })
+      .catch(error => {
+        const duration = (Date.now() - startTime) / 1000;
+        console.error(`Cache initialization failed after ${duration} seconds:`, error);
+        throw error;
+      });
   },
+
 
   // Cache warming
   warmCache: function() {
