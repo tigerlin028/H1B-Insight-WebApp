@@ -165,30 +165,50 @@ const cacheManager = {
   // Caching methods
   cacheCompanyStats: function() {
     return pool.query(`
-      WITH company_h1b_metrics AS (
-        SELECT 
-          matched_company_id,
-          COUNT(*) as total_apps,
-          SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as approved_apps
-        FROM h1b 
-        WHERE matched_company_id IS NOT NULL 
-        AND status IS NOT NULL
-        GROUP BY matched_company_id
-      )
-      SELECT 
-        c.company_id,
-        c.name as company_name,
-        ci.industry,
-        ec.employee_count,
-        hm.total_apps as total_h1b_applications,
-        hm.approved_apps as approved_h1b_applications,
-        ROUND((hm.approved_apps::DECIMAL * 100.0) / NULLIF(hm.total_apps, 0), 2) as h1b_approval_rate
-      FROM companies c
-      JOIN company_industries ci ON c.company_id = ci.company_id
-      JOIN employee_counts ec ON c.company_id = ec.company_id
-      JOIN company_h1b_metrics hm ON c.company_id = hm.matched_company_id
-      WHERE hm.total_apps >= 5
-      ORDER BY hm.total_apps DESC`
+      WITH 
+company_h1b_metrics AS (
+  SELECT 
+    matched_company_id,
+    COUNT(*) as total_apps,
+    SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as approved_apps
+  FROM h1b 
+  WHERE matched_company_id IS NOT NULL 
+  AND status IS NOT NULL
+  GROUP BY matched_company_id
+),
+company_salary_metrics AS (
+  SELECT 
+    p.company_id,
+    ROUND(AVG(s.max_salary)) as avg_max_salary
+  FROM postings p
+  JOIN salary s ON p.job_id = s.job_id
+  WHERE s.pay_period = 'YEARLY'
+  AND s.max_salary < 1000000
+  AND s.max_salary > 0
+  GROUP BY p.company_id
+  HAVING COUNT(*) >= 1
+)
+SELECT 
+  c.company_id,
+  c.name as company_name,
+  ci.industry,
+  ec.employee_count,
+  CASE
+    WHEN ec.employee_count < 100 THEN 'Startup'
+    WHEN ec.employee_count < 1000 THEN 'SMB'
+    ELSE 'Enterprise'
+  END as tier,
+  hm.total_apps as total_h1b_applications,
+  hm.approved_apps as approved_h1b_applications,
+  ROUND((hm.approved_apps::DECIMAL * 100.0) / NULLIF(hm.total_apps, 0), 2) as h1b_approval_rate,
+  COALESCE(sm.avg_max_salary, 0) as avg_max_salary
+FROM companies c
+JOIN company_industries ci ON c.company_id = ci.company_id
+JOIN employee_counts ec ON c.company_id = ec.company_id
+JOIN company_h1b_metrics hm ON c.company_id = hm.matched_company_id
+LEFT JOIN company_salary_metrics sm ON c.company_id = sm.company_id
+WHERE hm.total_apps >= 5
+ORDER BY hm.total_apps DESC`
     ).then(result => {
       cache.set('company_stats', result.rows);
       return result.rows;

@@ -164,7 +164,7 @@ const CompanyAnalysisPage = () => {
       flex: 1,
       renderCell: (params) => {
         const color = params.value === 'Enterprise' ? '#4CAF50' : 
-                     params.value === 'SMB' ? '#FFC107' : '#FF5722';
+                      params.value === 'SMB' ? '#FFC107' : '#FF5722';
         return (
           <Typography sx={{ color: color, fontWeight: 'bold' }}>
             {params.value}
@@ -176,30 +176,31 @@ const CompanyAnalysisPage = () => {
       field: 'total_h1b_applications', 
       headerName: 'H1B Applications',
       flex: 1,
-      type: 'number'
+      type: 'number',
+      valueFormatter: (params) => params.value ? Number(params.value).toLocaleString() : '0'
     },
     { 
       field: 'h1b_approval_rate', 
       headerName: 'H1B Approval Rate',
       flex: 1,
-      valueFormatter: (params) => `${params.value}%`
+      valueFormatter: (params) => params.value ? `${params.value}%` : '0%'
     },
     { 
       field: 'avg_max_salary', 
       headerName: 'Avg Max Salary',
       flex: 1,
-      valueFormatter: (params) => `$${params.value.toLocaleString()}`
+      valueFormatter: (params) => params.value > 0 ? `$${params.value.toLocaleString()}` : 'Insufficient Data'
     },
     { 
       field: 'employee_count', 
       headerName: 'Employees',
       flex: 1,
-      valueFormatter: (params) => params.value.toLocaleString()
+      valueFormatter: (params) => params.value ? params.value.toLocaleString() : '0'
     }
   ];
 
-  const rows = companyStats.map((item, index) => ({
-    id: index,
+  const rows = companyStats.map((item) => ({
+    id: item.company_id,
     ...item
   }));
   const filteredRows = rows.filter(row => 
