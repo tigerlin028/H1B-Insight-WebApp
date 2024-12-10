@@ -4,3 +4,4 @@ node_modules
 .cache/
 **/*.pack
 client/node_modules/.cache/
+client/node_modules/.cache/default-development/4.pack
