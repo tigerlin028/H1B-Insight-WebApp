@@ -1,6 +1,14 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 
+// Create axios instance with correct base URL
+const api = axios.create({
+  baseURL: 'http://localhost:8080',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -8,7 +16,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in on page load
     checkAuthStatus();
   }, []);
 
@@ -16,7 +23,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('token');
       if (token) {
-        const response = await axios.get('/api/auth/me', {
+        const response = await api.get('/api/auth/me', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setUser(response.data);
@@ -29,11 +36,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    const response = await axios.post('/api/auth/login', { email, password });
-    const { token, user } = response.data;
-    localStorage.setItem('token', token);
-    setUser(user);
-    return user;
+    try {
+      const response = await api.post('/api/auth/login', { 
+        email, 
+        password 
+      });
+      const { token, user } = response.data;
+      localStorage.setItem('token', token);
+      setUser(user);
+      return user;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const logout = () => {
@@ -42,7 +57,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
-    const response = await axios.post('/api/auth/register', userData);
+    const response = await api.post('/api/auth/register', userData);
     const { token, user } = response.data;
     localStorage.setItem('token', token);
     setUser(user);

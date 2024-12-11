@@ -43,7 +43,7 @@ const HomePage = () => {
 
       <Box sx={{ mb: 4 }}>
         <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
-          CIS550 Group 39
+          CIS550 Group 52
         </Typography>
         <Typography variant="body1" paragraph>
           Team Members: Joyce Chen, Caitlyn Cui, Jiahua Liao, Xiaotian Lin

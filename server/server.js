@@ -29,6 +29,18 @@ app.get('/companies/salary-distribution', routes.companySalaryDistribution);
 app.get('/companies/h1b-trends', routes.companyH1BTrends);
 
 app.use('/api/auth', authRoutes);
+console.log('Auth routes mounted at /api/auth')
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!' });
+});
+
+// 404 handler
+app.use((req, res) => {
+  console.log(`404 - Not Found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ message: 'Route not found' });
+});
 
 const server = app.listen(config.server_port, () => {
   console.log(`Server running at http://${config.server_host}:${config.server_port}/`);
