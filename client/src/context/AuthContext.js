@@ -14,6 +14,7 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     checkAuthStatus();
@@ -27,9 +28,11 @@ export const AuthProvider = ({ children }) => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setUser(response.data);
+        setIsAuthenticated(true);
       }
     } catch (error) {
       localStorage.removeItem('token');
+      setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }
@@ -44,9 +47,11 @@ export const AuthProvider = ({ children }) => {
       const { token, user } = response.data;
       localStorage.setItem('token', token);
       setUser(user);
+      setIsAuthenticated(true);
       return user;
     } catch (error) {
       console.error('Login error:', error);
+      setIsAuthenticated(false);
       throw error;
     }
   };
@@ -54,18 +59,33 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
+    setIsAuthenticated(false);
   };
 
   const register = async (userData) => {
-    const response = await api.post('/api/auth/register', userData);
-    const { token, user } = response.data;
-    localStorage.setItem('token', token);
-    setUser(user);
-    return user;
+    try {
+      const response = await api.post('/api/auth/register', userData);
+      const { token, user } = response.data;
+      localStorage.setItem('token', token);
+      setUser(user);
+      setIsAuthenticated(true);
+      return user;
+    } catch (error) {
+      console.error('Registration error:', error);
+      setIsAuthenticated(false);
+      throw error;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      register, 
+      loading,
+      isAuthenticated 
+    }}>
       {children}
     </AuthContext.Provider>
   );

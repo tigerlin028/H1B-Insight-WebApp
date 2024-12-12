@@ -10,17 +10,16 @@ import {
   MenuItem,
   IconButton,
 } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import LoginPage from './auth/LoginModal';
 import RegisterPage from './auth/RegisterModal';
 
 const NavBar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
-  const navigate = useNavigate();
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -31,9 +30,16 @@ const NavBar = () => {
   };
 
   const handleLogout = () => {
-    logout(); // Call the logout function from AuthContext
+    logout();
     handleMenuClose();
-    navigate('/login'); // Redirect to the login page
+  };
+
+  const handleLoginSuccess = () => {
+    setLoginOpen(false);
+  };
+
+  const handleRegisterSuccess = () => {
+    setRegisterOpen(false);
   };
 
   return (
@@ -69,7 +75,7 @@ const NavBar = () => {
             Jobs
           </Button>
 
-          {user ? (
+          {isAuthenticated && user ? (
             <>
               <Typography sx={{ marginRight: 1, color: 'white' }}>
                 {user.name}
@@ -84,7 +90,6 @@ const NavBar = () => {
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
               >
-                <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
             </>
@@ -101,8 +106,16 @@ const NavBar = () => {
         </Box>
       </Toolbar>
 
-      <LoginPage open={loginOpen} onClose={() => setLoginOpen(false)} />
-      <RegisterPage open={registerOpen} onClose={() => setRegisterOpen(false)} />
+      <LoginPage 
+        open={loginOpen} 
+        onClose={() => setLoginOpen(false)} 
+        onSuccess={handleLoginSuccess}
+      />
+      <RegisterPage 
+        open={registerOpen} 
+        onClose={() => setRegisterOpen(false)} 
+        onSuccess={handleRegisterSuccess}
+      />
     </AppBar>
   );
 };
