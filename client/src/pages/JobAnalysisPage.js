@@ -26,12 +26,12 @@ ChartJS.register(
   Legend,
 );
 
-// Penn colors
 const PENN_RED = '#990000';
 const PENN_BLUE = '#011F5B';
 
 const JobAnalysisDashboard = () => {
   const [jobData, setJobData] = React.useState([]);
+  const [stateData, setStateData] = React.useState([]);
 
   React.useEffect(() => {
     fetch('http://localhost:8080/companies/salary-distribution')
@@ -42,9 +42,17 @@ const JobAnalysisDashboard = () => {
       .catch(err => {
         console.error(err);
       });
+    fetch('http://localhost:8080/company/state-stats')
+      .then(res => res.json())
+      .then(data => {
+        setStateData(data);
+      })
+      .catch(err => {
+        console.error(err);
+      });
   }, []);
 
-  // Company job distribution analysis
+  // Existing data transformation functions
   const getJobDistributionData = () => {
     const companyData = jobData
       .sort((a, b) => parseInt(b.job_count) - parseInt(a.job_count))
@@ -70,7 +78,49 @@ const JobAnalysisDashboard = () => {
     };
   };
 
-  // Company size vs job openings scatter plot
+  const getStateDistributionData = () => {
+    // Return empty data structure if stateData is not an array
+    if (!Array.isArray(stateData) || stateData.length === 0) {
+        return {
+            labels: [],
+            datasets: [
+                {
+                    label: 'Number of Jobs',
+                    data: [],
+                    backgroundColor: PENN_RED,
+                },
+                {
+                    label: 'Average Salary',
+                    data: [],
+                    yAxisID: 'y2',
+                    backgroundColor: PENN_BLUE,
+                }
+            ]
+        };
+    }
+
+    const sortedStateData = [...stateData]
+        .sort((a, b) => parseInt(b.num_jobs) - parseInt(a.num_jobs))
+        .slice(0, 15);
+
+    return {
+        labels: sortedStateData.map(item => item.state),
+        datasets: [
+            {
+                label: 'Number of Jobs',
+                data: sortedStateData.map(item => parseInt(item.num_jobs)),
+                backgroundColor: PENN_RED,
+            },
+            {
+                label: 'Average Salary',
+                data: sortedStateData.map(item => parseInt(item.avg_salary)),
+                yAxisID: 'y2',
+                backgroundColor: PENN_BLUE,
+            }
+        ]
+    };
+};
+
   const getJobsByCompanySizeData = () => ({
     datasets: [{
       label: 'Companies',
@@ -112,6 +162,25 @@ const JobAnalysisDashboard = () => {
         title: {
           display: true,
           text: 'Average Salary ($)'
+        }
+      }
+    }
+  };
+
+  const stateChartOptions = {
+    ...chartOptions,
+    plugins: {
+      tooltip: {
+        callbacks: {
+          afterBody: (tooltipItems) => {
+            const dataIndex = tooltipItems[0].dataIndex;
+            const state = stateData[dataIndex];
+            return [
+              '',
+              `Companies: ${state.num_companies}`,
+              `Industries: ${state.top_industries}`
+            ];
+          }
         }
       }
     }
@@ -159,7 +228,7 @@ const JobAnalysisDashboard = () => {
       </Typography>
 
       <Grid container spacing={3}>
-        {/* Summary Cards - Adjusted padding and typography sizes */}
+        {/* Existing summary cards */}
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 2, textAlign: 'center', height: '100%' }}>
             <Typography variant="h6" gutterBottom sx={{ fontSize: '1rem' }}>
@@ -197,13 +266,31 @@ const JobAnalysisDashboard = () => {
           </Paper>
         </Grid>
 
-        {/* Top Hiring Companies - Adjusted height */}
+        {/* New State Distribution Chart */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom sx={{ fontSize: '1rem', mb: 2 }}>
+              Top States by Job Openings
+            </Typography>
+            <Box sx={{ height: 600 }}>
+              <Bar 
+                data={getStateDistributionData()} 
+                options={{
+                  ...stateChartOptions,
+                  maintainAspectRatio: false
+                }}
+              />
+            </Box>
+          </Paper>
+        </Grid>
+
+        {/* Existing charts */}
         <Grid item xs={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom sx={{ fontSize: '1rem', mb: 2 }}>
               Top Hiring Companies
             </Typography>
-            <Box sx={{ height: 600 }}>  {/* Adjusted height */}
+            <Box sx={{ height: 600 }}>
               <Bar 
                 data={getJobDistributionData()} 
                 options={{
@@ -215,13 +302,12 @@ const JobAnalysisDashboard = () => {
           </Paper>
         </Grid>
 
-        {/* Company Size vs Jobs - Adjusted height */}
         <Grid item xs={12}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom sx={{ fontSize: '1rem', mb: 2 }}>
               Company Size vs. Job Openings
             </Typography>
-            <Box sx={{ height: 660 }}>  {/* Adjusted height */}
+            <Box sx={{ height: 660 }}>
               <Bubble 
                 data={getJobsByCompanySizeData()} 
                 options={{
@@ -236,6 +322,5 @@ const JobAnalysisDashboard = () => {
     </Container>
   );
 };
-
 
 export default JobAnalysisDashboard;

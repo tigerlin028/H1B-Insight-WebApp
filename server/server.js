@@ -16,10 +16,7 @@ app.use(express.json());
 // API endpoints
 app.get('/h1b/industry-approval', routes.industryApproval);
 app.get('/industry/salary', routes.industrySalary);
-app.get('/company/size-stats', routes.companySizeStats);
 app.get('/h1b/nationality-stats', routes.nationalityStats);
-app.get('/jobs/remote-stats', routes.remoteWorkStats);
-app.get('/jobs/level-stats', routes.jobLevelStats);
 app.get('/company/tier-stats', routes.companyTierStats);
 app.get('/h1b/gender-stats', routes.genderStats);
 app.get('/company/state-stats', routes.stateStats);

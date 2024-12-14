@@ -35,39 +35,9 @@ const industrySalary = async function(req, res) {
   }
 };
 
-const companySizeStats = async function(req, res) {
-  try {
-    const data = await cacheManager.getCompanySizeStats();
-    res.json(data);
-  } catch (err) {
-    console.error(err);
-    res.json([]);
-  }
-};
-
 const nationalityStats = async function(req, res) {
   try {
     const data = await cacheManager.getNationalityStats();
-    res.json(data);
-  } catch (err) {
-    console.error(err);
-    res.json([]);
-  }
-};
-
-const remoteWorkStats = async function(req, res) {
-  try {
-    const data = await cacheManager.getRemoteWorkStats();
-    res.json(data);
-  } catch (err) {
-    console.error(err);
-    res.json([]);
-  }
-};
-
-const jobLevelStats = async function(req, res) {
-  try {
-    const data = await cacheManager.getJobLevelStats();
     res.json(data);
   } catch (err) {
     console.error(err);
@@ -149,10 +119,7 @@ module.exports = {
   companyDetailedStats,
   industryApproval,
   industrySalary,
-  companySizeStats,
   nationalityStats,
-  remoteWorkStats,
-  jobLevelStats,
   companyTierStats,
   genderStats,
   stateStats,

@@ -44,10 +44,7 @@ const cacheManager = {
       this.cacheH1BTrends(),
       this.cacheIndustryApproval(),
       this.cacheIndustrySalary(),
-      this.cacheCompanySizeStats(),
       this.cacheNationalityStats(),
-      this.cacheRemoteWorkStats(),
-      this.cacheJobLevelStats(),
       this.cacheCompanyTierStats(),
       this.cacheGenderStats(),
       this.cacheStateStats(),
@@ -98,34 +95,10 @@ const cacheManager = {
     return Promise.resolve(data);
   },
 
-  getCompanySizeStats: function() {
-    let data = cache.get('company_size_stats');
-    if (!data) {
-      return this.cacheCompanySizeStats();
-    }
-    return Promise.resolve(data);
-  },
-
   getNationalityStats: function() {
     let data = cache.get('nationality_stats');
     if (!data) {
       return this.cacheNationalityStats();
-    }
-    return Promise.resolve(data);
-  },
-
-  getRemoteWorkStats: function() {
-    let data = cache.get('remote_work_stats');
-    if (!data) {
-      return this.cacheRemoteWorkStats();
-    }
-    return Promise.resolve(data);
-  },
-
-  getJobLevelStats: function() {
-    let data = cache.get('job_level_stats');
-    if (!data) {
-      return this.cacheJobLevelStats();
     }
     return Promise.resolve(data);
   },
@@ -280,35 +253,47 @@ ORDER BY hm.total_apps DESC`
 
     cacheIndustryApproval: function() {
             return pool.query(`
-                WITH h1b_aggs AS (
-        SELECT 
-          matched_company_id,
-          COUNT(*) as total_apps,
-          SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as approved_apps
-        FROM h1b 
-        WHERE matched_company_id IS NOT NULL 
-        AND status IS NOT NULL
-        GROUP BY matched_company_id
-      )
-      SELECT 
-        ci.industry,
-        SUM(h.total_apps) as total_applications,
-        SUM(h.approved_apps) as approved_applications,
-        ROUND(
-          CASE 
-            WHEN SUM(h.total_apps) > 0 THEN 
-              (SUM(h.approved_apps)::DECIMAL * 100.0) / SUM(h.total_apps)
-            ELSE 0 
-          END, 
-          2
-        ) as approval_rate
-      FROM h1b_aggs h
-      JOIN companies c ON h.matched_company_id = c.company_id
-      JOIN company_industries ci ON c.company_id = ci.company_id
-      WHERE ci.industry IS NOT NULL
-      GROUP BY ci.industry
-      HAVING SUM(h.total_apps) >= 5
-      ORDER BY approval_rate DESC`
+                SELECT
+    ci.industry,
+    SUM(h.total_apps) AS total_applications,
+    SUM(h.approved_apps) AS approved_applications,
+    ROUND(
+        CASE
+            WHEN SUM(h.total_apps) > 0 THEN
+                (SUM(h.approved_apps)::DECIMAL * 100.0) / SUM(h.total_apps)
+            ELSE 0
+        END,
+        2
+    ) AS approval_rate
+FROM (
+    SELECT
+        h1b.matched_company_id,
+        COUNT(*) AS total_apps,
+        SUM(CASE WHEN h1b.status = 1 THEN 1 ELSE 0 END) AS approved_apps
+    FROM h1b
+    WHERE
+        h1b.matched_company_id IS NOT NULL
+        AND h1b.status IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM companies c
+            WHERE c.company_id = h1b.matched_company_id
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM company_industries ci
+            WHERE ci.company_id = h1b.matched_company_id
+              AND ci.industry IS NOT NULL
+        )
+    GROUP BY h1b.matched_company_id
+) h
+JOIN companies c ON h.matched_company_id = c.company_id
+JOIN company_industries ci ON c.company_id = ci.company_id
+WHERE ci.industry IS NOT NULL
+GROUP BY ci.industry
+HAVING SUM(h.total_apps) >= 5
+ORDER BY approval_rate DESC
+LIMIT 10;`
             ).then(result => {
                 cache.set('industry_approval', result.rows);
                 return result.rows;
@@ -342,42 +327,6 @@ ORDER BY hm.total_apps DESC`
             });
     },
 
-        cacheCompanySizeStats: function() {
-            return pool.query(`
-                WITH company_metrics AS (
-        SELECT 
-          c.company_id,
-          ci.industry,
-          CASE
-            WHEN ec.employee_count < 100 THEN 'Small (<100)'
-            WHEN ec.employee_count < 1000 THEN 'Medium (100-999)'
-            WHEN ec.employee_count < 10000 THEN 'Large (1000-9999)'
-            ELSE 'Huge (10000+)'
-          END as size_category,
-          COUNT(*) OVER (PARTITION BY h.matched_company_id) as company_apps,
-          SUM(CASE WHEN h.status = 1 THEN 1 ELSE 0 END) OVER (PARTITION BY h.matched_company_id) as company_approvals
-        FROM companies c
-        JOIN employee_counts ec ON c.company_id = ec.company_id
-        JOIN company_industries ci ON c.company_id = ci.company_id
-        LEFT JOIN h1b h ON c.company_id = h.matched_company_id
-        WHERE h.matched_company_id IS NOT NULL
-      )
-      SELECT
-        size_category,
-        industry,
-        COUNT(DISTINCT company_id) as companies_count,
-        SUM(company_apps) as total_applications,
-        ROUND(AVG(company_approvals::DECIMAL / NULLIF(company_apps, 0)) * 100, 2) as approval_rate
-      FROM company_metrics
-      GROUP BY size_category, industry
-      HAVING COUNT(DISTINCT company_id) >= 5
-      ORDER BY size_category, approval_rate DESC`
-            ).then(result => {
-                cache.set('company_size_stats', result.rows);
-                return result.rows;
-            });
-        },
-
         cacheNationalityStats: function() {
             return pool.query(`
                 WITH nationality_stats AS (
@@ -403,109 +352,26 @@ ORDER BY hm.total_apps DESC`
             });
         },
 
-        cacheRemoteWorkStats: function() {
-            return pool.query(`
-                WITH remote_metrics AS (
-        SELECT
-          CASE
-            WHEN p.remote_allowed = 1 THEN 'Remote Allowed'
-            ELSE 'Not Specified'
-          END as work_arrangement,
-          h.status,
-          (s.min_salary + s.max_salary)/2 as avg_salary,
-          p.company_id
-        FROM h1b h
-        JOIN postings p ON h.matched_company_id = p.company_id
-        JOIN salary s ON p.job_id = s.job_id
-        WHERE s.pay_period = 'YEARLY'
-      )
-      SELECT
-        work_arrangement,
-        COUNT(*) as total_applications,
-        ROUND(AVG(CASE WHEN status = 1 THEN 1 ELSE 0 END) * 100, 2) as approval_rate,
-        ROUND(AVG(avg_salary)) as avg_salary,
-        COUNT(DISTINCT company_id) as unique_companies
-      FROM remote_metrics
-      GROUP BY work_arrangement
-      ORDER BY total_applications DESC`
-            ).then(result => {
-                cache.set('remote_work_stats', result.rows);
-                return result.rows;
-            });
-        },
-
-        cacheJobLevelStats: function() {
-            return pool.query(`
-                WITH job_characteristics AS (
-        SELECT
-          CASE
-            WHEN LOWER(p.title) LIKE '%senior%' OR LOWER(p.title) LIKE '%sr%' OR LOWER(p.title) LIKE '%lead%' THEN 'Senior Level'
-            WHEN LOWER(p.title) LIKE '%junior%' OR LOWER(p.title) LIKE '%jr%' OR LOWER(p.title) LIKE '%associate%' THEN 'Junior Level'
-            ELSE 'Mid Level'
-          END as seniority_level,
-          p.work_type,
-          s.min_salary,
-          s.max_salary,
-          ci.industry
-        FROM postings p
-        JOIN salary s ON p.job_id = s.job_id
-        JOIN company_industries ci ON p.company_id = ci.company_id
-        WHERE s.pay_period = 'YEARLY'
-        AND s.min_salary > 0
-        AND s.max_salary < 1000000
-      )
-      SELECT
-        seniority_level,
-        work_type,
-        industry,
-        COUNT(*) as job_count,
-        ROUND(AVG(min_salary)) as avg_min_salary,
-        ROUND(AVG(max_salary)) as avg_max_salary,
-        ROUND(AVG(max_salary - min_salary)) as avg_salary_range
-      FROM job_characteristics
-      GROUP BY seniority_level, work_type, industry
-      HAVING COUNT(*) >= 5
-      ORDER BY seniority_level, job_count DESC`
-            ).then(result => {
-                cache.set('job_level_stats', result.rows);
-                return result.rows;
-            });
-        },
-
         cacheCompanyTierStats: function() {
             return pool.query(`
-                WITH company_tiers AS (
-        SELECT
-          c.company_id,
-          ci.industry,
-          CASE
-            WHEN ec.employee_count < 100 THEN 'Startup'
-            WHEN ec.employee_count < 1000 THEN 'SMB'
-            ELSE 'Enterprise'
-          END as company_size,
-          ec.employee_count,
-          ec.follower_count
-        FROM companies c
-        JOIN employee_counts ec ON c.company_id = ec.company_id
-        JOIN company_industries ci ON c.company_id = ci.company_id
-      )
-      SELECT
-        ct.industry,
-        ct.company_size,
-        COUNT(DISTINCT ct.company_id) as company_count,
-        ROUND(AVG(ct.follower_count)) as avg_followers,
-        ROUND(AVG(ct.employee_count)) as avg_employees,
-        COUNT(DISTINCT p.job_id) as total_jobs,
-        ROUND(AVG(s.max_salary)) as avg_max_salary,
-        ROUND(AVG(CASE WHEN h.status = 1 THEN 1 ELSE 0 END) * 100, 2) as h1b_approval_rate
-      FROM company_tiers ct
-      LEFT JOIN postings p ON ct.company_id = p.company_id
-      LEFT JOIN salary s ON p.job_id = s.job_id
-      LEFT JOIN h1b h ON p.company_id = h.matched_company_id
-      WHERE s.pay_period = 'YEARLY'
-      GROUP BY ct.industry, ct.company_size
-      HAVING COUNT(DISTINCT ct.company_id) >= 5
-      ORDER BY company_count DESC, avg_max_salary DESC`
+             SELECT
+    ci.industry,
+    COUNT(DISTINCT c.company_id) as company_count,
+    ROUND(AVG(ec.follower_count)) as avg_followers,
+    ROUND(AVG(ec.employee_count)) as avg_employees,
+    COUNT(DISTINCT p.job_id) as total_jobs,
+    ROUND(AVG(s.max_salary)) as avg_max_salary,
+    ROUND(AVG(CASE WHEN h.status = 1 THEN 1 ELSE 0 END) * 100, 2) as h1b_approval_rate
+FROM companies c
+JOIN employee_counts ec ON c.company_id = ec.company_id
+JOIN company_industries ci ON c.company_id = ci.company_id
+LEFT JOIN postings p ON c.company_id = p.company_id
+LEFT JOIN salary s ON p.job_id = s.job_id
+LEFT JOIN h1b h ON p.company_id = h.matched_company_id
+WHERE s.pay_period = 'YEARLY'
+GROUP BY ci.industry
+HAVING COUNT(DISTINCT c.company_id) >= 5
+ORDER BY company_count DESC, avg_max_salary DESC`
             ).then(result => {
                 cache.set('company_tier_stats', result.rows);
                 return result.rows;
@@ -531,30 +397,84 @@ ORDER BY hm.total_apps DESC`
 
         cacheStateStats: function() {
             return pool.query(`
-                WITH state_metrics AS (
-        SELECT 
-          c.company_id,
-          c.state,
-          p.job_id,
-          (s.min_salary + s.max_salary)/2 as avg_salary,
-          ci.industry
-        FROM companies c
-        JOIN postings p ON c.company_id = p.company_id
-        JOIN salary s ON p.job_id = s.job_id
-        JOIN company_industries ci ON c.company_id = ci.company_id
-        WHERE s.pay_period = 'YEARLY'
-        AND c.state IS NOT NULL
-      )
-      SELECT
-        state,
-        COUNT(DISTINCT company_id) as num_companies,
-        COUNT(DISTINCT job_id) as num_jobs,
-        ROUND(AVG(avg_salary)) as avg_salary,
-        STRING_AGG(DISTINCT industry, ', ' ORDER BY industry) as top_industries
-      FROM state_metrics
-      GROUP BY state
-      HAVING COUNT(DISTINCT company_id) >= 5
-      ORDER BY num_jobs DESC`
+WITH state_mapping AS (
+  SELECT 'Alabama' as state_name, 'AL' as state_abbr UNION
+  SELECT 'Alaska', 'AK' UNION
+  SELECT 'Arizona', 'AZ' UNION
+  SELECT 'Arkansas', 'AR' UNION
+  SELECT 'California', 'CA' UNION
+  SELECT 'Colorado', 'CO' UNION
+  SELECT 'Connecticut', 'CT' UNION
+  SELECT 'Delaware', 'DE' UNION
+  SELECT 'Florida', 'FL' UNION
+  SELECT 'Georgia', 'GA' UNION
+  SELECT 'Hawaii', 'HI' UNION
+  SELECT 'Idaho', 'ID' UNION
+  SELECT 'Illinois', 'IL' UNION
+  SELECT 'Indiana', 'IN' UNION
+  SELECT 'Iowa', 'IA' UNION
+  SELECT 'Kansas', 'KS' UNION
+  SELECT 'Kentucky', 'KY' UNION
+  SELECT 'Louisiana', 'LA' UNION
+  SELECT 'Maine', 'ME' UNION
+  SELECT 'Maryland', 'MD' UNION
+  SELECT 'Massachusetts', 'MA' UNION
+  SELECT 'Michigan', 'MI' UNION
+  SELECT 'Minnesota', 'MN' UNION
+  SELECT 'Mississippi', 'MS' UNION
+  SELECT 'Missouri', 'MO' UNION
+  SELECT 'Montana', 'MT' UNION
+  SELECT 'Nebraska', 'NE' UNION
+  SELECT 'Nevada', 'NV' UNION
+  SELECT 'New Hampshire', 'NH' UNION
+  SELECT 'New Jersey', 'NJ' UNION
+  SELECT 'New Mexico', 'NM' UNION
+  SELECT 'New York', 'NY' UNION
+  SELECT 'North Carolina', 'NC' UNION
+  SELECT 'North Dakota', 'ND' UNION
+  SELECT 'Ohio', 'OH' UNION
+  SELECT 'Oklahoma', 'OK' UNION
+  SELECT 'Oregon', 'OR' UNION
+  SELECT 'Pennsylvania', 'PA' UNION
+  SELECT 'Rhode Island', 'RI' UNION
+  SELECT 'South Carolina', 'SC' UNION
+  SELECT 'South Dakota', 'SD' UNION
+  SELECT 'Tennessee', 'TN' UNION
+  SELECT 'Texas', 'TX' UNION
+  SELECT 'Utah', 'UT' UNION
+  SELECT 'Vermont', 'VT' UNION
+  SELECT 'Virginia', 'VA' UNION
+  SELECT 'Washington', 'WA' UNION
+  SELECT 'West Virginia', 'WV' UNION
+  SELECT 'Wisconsin', 'WI' UNION
+  SELECT 'Wyoming', 'WY' UNION
+  SELECT 'District of Columbia', 'DC'
+),
+state_metrics AS (
+  SELECT
+    c.company_id,
+    c.state,
+    p.job_id,
+    (s.min_salary + s.max_salary)/2 as avg_salary,
+    ci.industry
+  FROM companies c
+  JOIN postings p ON c.company_id = p.company_id
+  JOIN salary s ON p.job_id = s.job_id
+  JOIN company_industries ci ON c.company_id = ci.company_id
+  WHERE s.pay_period = 'YEARLY'
+  AND c.state IS NOT NULL
+)
+SELECT
+  COALESCE(sm.state_abbr, m.state) as state,
+  COUNT(DISTINCT m.company_id) as num_companies,
+  COUNT(DISTINCT m.job_id) as num_jobs,
+  ROUND(AVG(m.avg_salary)) as avg_salary,
+  STRING_AGG(DISTINCT m.industry, ', ' ORDER BY m.industry) as top_industries
+FROM state_metrics m
+LEFT JOIN state_mapping sm ON LOWER(m.state) = LOWER(sm.state_name)
+GROUP BY COALESCE(sm.state_abbr, m.state)
+HAVING COUNT(DISTINCT m.company_id) >= 5
+ORDER BY num_jobs DESC`
             ).then(result => {
                 cache.set('state_stats', result.rows);
                 return result.rows;
@@ -567,8 +487,7 @@ ORDER BY hm.total_apps DESC`
         SELECT
           ci.industry,
           COUNT(DISTINCT c.company_id) as company_count,
-          AVG(ec.employee_count) as avg_employees,
-          AVG(ec.follower_count) as avg_followers
+          AVG(ec.employee_count) as avg_employees
         FROM company_industries ci
         JOIN companies c ON ci.company_id = c.company_id
         JOIN employee_counts ec ON c.company_id = ec.company_id
@@ -582,7 +501,6 @@ ORDER BY hm.total_apps DESC`
           WHEN avg_employees > 100 THEN 'Medium'
           ELSE 'Small'
         END as size_category,
-        ROUND(avg_followers) as rounded_avg_followers,
         ROUND(avg_employees) as rounded_avg_employees
       FROM industry_stats i
       WHERE company_count >= 5

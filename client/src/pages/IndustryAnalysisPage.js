@@ -151,20 +151,6 @@ const IndustryAnalysisPage = () => {
   // Define columns for the DataGrid
   const columns = [
     { field: 'industry', headerName: 'Industry', flex: 1 },
-    { 
-      field: 'company_size', 
-      headerName: 'Company Size', 
-      flex: 1,
-      renderCell: (params) => {
-        const color = params.value === 'Enterprise' ? '#4CAF50' : 
-                     params.value === 'SMB' ? '#FFC107' : '#FF5722';
-        return (
-          <Typography sx={{ color: color, fontWeight: 'bold' }}>
-            {params.value}
-          </Typography>
-        );
-      }
-    },
     {
       field: 'company_count',
       headerName: 'Company Count',
