@@ -65,8 +65,6 @@ module.exports = {
 };
 ```
 
-> ⚠️ **Important**: Do not commit this file to GitHub. It contains sensitive information.
-
 ---
 
 ### 2. Frontend Setup (React)
