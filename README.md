@@ -117,7 +117,7 @@ Here is a preview of the "About" page from the deployed web application:
 
 Developed as a course project for CIS 5500 at the University of Pennsylvania:
 
-- Joyce Chen  
 - Caitlyn Cui  
+- Xiaotian Lin
+- Joyce Chen  
 - Jiahua Liao  
-- Xiaotian Lin  
